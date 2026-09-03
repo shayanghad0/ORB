@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<title>ORB Strategy Results</title>
+<style>
+  body { background:#0f0f23; color:#ccc; font-family:Consolas,monospace; padding:20px; }
+  h1 { color:#f1c40f; text-align:center; }
+  h2 { color:#3498db; margin-top:30px; }
+  .summary { display:flex; gap:20px; justify-content:center; flex-wrap:wrap; margin:20px 0; }
+  .card { background:#1a1a2e; border:1px solid #333; border-radius:8px; padding:15px 25px; text-align:center; min-width:160px; }
+  .card .label { color:#888; font-size:12px; }
+  .card .value { color:#f1c40f; font-size:22px; font-weight:bold; margin-top:5px; }
+  table { border-collapse:collapse; width:100%; margin-top:20px; }
+  th { background:#1a1a2e; color:#f1c40f; padding:10px; border:1px solid #333; font-size:12px; }
+  td { padding:8px 10px; border:1px solid #333; text-align:center; }
+  tr:hover { background:#1a1a2e; }
+  .charts { display:flex; flex-wrap:wrap; gap:10px; justify-content:center; margin-top:30px; }
+  .charts img { max-width:600px; border:1px solid #333; border-radius:6px; }
+</style></head><body>
+<h1>ORB - Opening Range Breakout Results</h1>
+
+<div class="summary">
+  <div class="card"><div class="label">Starting Balance</div><div class="value">$100.00</div></div>
+  <div class="card"><div class="label">Final Balance</div><div class="value" style="color:#2ecc71">$188.07</div></div>
+  <div class="card"><div class="label">Total P&L</div><div class="value" style="color:#2ecc71">+88.07</div></div>
+  <div class="card"><div class="label">Leverage</div><div class="value">1:500</div></div>
+  <div class="card"><div class="label">Trades</div><div class="value">22</div></div>
+  <div class="card"><div class="label">Win Rate</div><div class="value">68.2%</div></div>
+  <div class="card"><div class="label">Wins / Losses</div><div class="value">15 / 7</div></div>
+</div>
+
+<h2>Trade Log</h2>
+<table>
+<tr><th>Symbol</th><th>Date</th><th>ORB High</th><th>ORB Low</th>
+<th>Signal</th><th>Lots</th><th>Entry</th><th>TP</th><th>SL</th>
+<th>Margin</th><th>Exit</th><th>Type</th><th>P&L</th><th>Outcome</th></tr>
+<tr>
+  <td>XAUUSD</td><td>2026-08-05</td>
+  <td>4157.83</td><td>4153.86</td>
+  <td style="color:#00ff88">LONG</td>
+  <td>0.01</td>
+  <td>4159.64</td><td>4170.04</td><td>4149.24</td>
+  <td>8.32</td>
+  <td>4170.04</td><td>TP</td>
+  <td style="color:#2ecc71;font-weight:bold">+10.40</td>
+  <td style="color:#2ecc71;font-weight:bold">WIN</td>
+</tr><tr>
+  <td>XAUUSD</td><td>2026-08-06</td>
+  <td>4269.78</td><td>4266.36</td>
+  <td style="color:#ff4757">SHORT</td>
+  <td>0.01</td>
+  <td>4265.37</td><td>4254.71</td><td>4276.03</td>
+  <td>8.53</td>
+  <td>4254.71</td><td>TP</td>
+  <td style="color:#2ecc71;font-weight:bold">+10.66</td>
+  <td style="color:#2ecc71;font-weight:bold">WIN</td>
+</tr><tr>
+  <td>XAUUSD</td><td>2026-08-07</td>
+  <td>4317.66</td><td>4313.47</td>
+  <td style="color:#00ff88">LONG</td>
+  <td>0.01</td>
+  <td>4318.15</td><td>4328.95</td><td>4307.35</td>
+  <td>8.64</td>
+  <td>4307.35</td><td>SL</td>
+  <td style="color:#e74c3c;font-weight:bold">-10.80</td>
+  <td style="color:#e74c3c;font-weight:bold">LOSS</td>
+</tr><tr>
+  <td>XAUUSD</td><td>2026-08-09</td>
+  <td>—</td><td>—</td>
+  <td style="color:#888">—</td>
+  <td>0.01</td>
+  <td>—</td><td>—</td><td>—</td>
+  <td>8.69</td>
+  <td>—</td><td>—</td>
+  <td style="color:#888;font-weight:bold">+0.00</td>
+  <td style="color:#f39c12;font-weight:bold">—</td>
+</tr><tr>
+  <td>XAUUSD</td><td>2026-08-10</td>
+  <td>4343.42</td><td>4340.34</td>
+  <td style="color:#ff4757">SHORT</td>
+  <td>0.01</td>
+  <td>4339.30</td><td>4328.45</td><td>4350.15</td>
+  <td>8.68</td>
+  <td>4328.45</td><td>TP</td>
+  <td style="color:#2ecc71;font-weight:bold">+10.85</td>
+  <td style="color:#2ecc71;font-weight:bold">WIN</td>
+</tr><tr>
+  <td>XAUUSD</td><td>2026-08-11</td>
+  <td>4381.06</td><td>4378.05</td>
+  <td style="color:#ff4757">SHORT</td>
+  <td>0.01</td>
+  <td>4377.84</td><td>4366.90</td><td>4388.78</td>
+  <td>8.76</td>
+  <td>4388.78</td><td>SL</td>
+  <td style="color:#e74c3c;font-weight:bold">-10.94</td>
+  <td style="color:#e74c3c;font-weight:bold">LOSS</td>
+</tr><tr>
+  <td>XAUUSD</td><td>2026-08-12</td>
+  <td>4419.59</td><td>4415.59</td>
+  <td style="color:#ff4757">SHORT</td>
+  <td>0.01</td>
+  <td>4414.08</td><td>4403.04</td><td>4425.12</td>
+  <td>8.83</td>
+  <td>4425.12</td><td>SL</td>
+  <td style="color:#e74c3c;font-weight:bold">-11.04</td>
+  <td style="color:#e74c3c;font-weight:bold">LOSS</td>
+</tr><tr>
+  <td>XAUUSD</td><td>2026-08-13</td>
+  <td>4387.80</td><td>4384.51</td>
+  <td style="color:#00ff88">LONG</td>
+  <td>0.01</td>
+  <td>4388.34</td><td>4399.31</td><td>4377.37</td>
+  <td>8.78</td>
+  <td>4399.31</td><td>TP</td>
+  <td style="color:#2ecc71;font-weight:bold">+10.97</td>
+  <td style="color:#2ecc71;font-weight:bold">WIN</td>
+</tr><tr>
+  <td>XAUUSD</td><td>2026-08-14</td>
+  <td>4350.62</td><td>4348.22</td>
+  <td style="color:#00ff88">LONG</td>
+  <td>0.01</td>
+  <td>4351.26</td><td>4362.14</td><td>4340.38</td>
+  <td>8.70</td>
+  <td>4362.14</td><td>TP</td>
+  <td style="color:#2ecc71;font-weight:bold">+10.88</td>
+  <td style="color:#2ecc71;font-weight:bold">WIN</td>
+</tr><tr>
+  <td>XAUUSD</td><td>2026-08-16</td>
+  <td>—</td><td>—</td>
+  <td style="color:#888">—</td>
+  <td>0.01</td>
+  <td>—</td><td>—</td><td>—</td>
+  <td>8.75</td>
+  <td>—</td><td>—</td>
+  <td style="color:#888;font-weight:bold">+0.00</td>
+  <td style="color:#f39c12;font-weight:bold">—</td>
+</tr><tr>
+  <td>XAUUSD</td><td>2026-08-17</td>
+  <td>4402.05</td><td>4396.33</td>
+  <td style="color:#ff4757">SHORT</td>
+  <td>0.01</td>
+  <td>4395.91</td><td>4384.92</td><td>4406.90</td>
+  <td>8.79</td>
+  <td>4384.92</td><td>TP</td>
+  <td style="color:#2ecc71;font-weight:bold">+10.99</td>
+  <td style="color:#2ecc71;font-weight:bold">WIN</td>
+</tr><tr>
+  <td>XAUUSD</td><td>2026-08-18</td>
+  <td>4394.96</td><td>4392.30</td>
+  <td style="color:#00ff88">LONG</td>
+  <td>0.01</td>
+  <td>4396.91</td><td>4407.90</td><td>4385.92</td>
+  <td>8.79</td>
+  <td>4385.92</td><td>SL</td>
+  <td style="color:#e74c3c;font-weight:bold">-10.99</td>
+  <td style="color:#e74c3c;font-weight:bold">LOSS</td>
+</tr><tr>
+  <td>XAUUSD</td><td>2026-08-19</td>
+  <td>4368.18</td><td>4365.84</td>
+  <td style="color:#00ff88">LONG</td>
+  <td>0.01</td>
+  <td>4368.25</td><td>4379.17</td><td>4357.33</td>
+  <td>8.74</td>
+  <td>4379.17</td><td>TP</td>
+  <td style="color:#2ecc71;font-weight:bold">+10.92</td>
+  <td style="color:#2ecc71;font-weight:bold">WIN</td>
+</tr><tr>
+  <td>XAUUSD</td><td>2026-08-20</td>
+  <td>4494.63</td><td>4492.17</td>
+  <td style="color:#ff4757">SHORT</td>
+  <td>0.01</td>
+  <td>4491.18</td><td>4479.95</td><td>4502.41</td>
+  <td>8.98</td>
+  <td>4479.95</td><td>TP</td>
+  <td style="color:#2ecc71;font-weight:bold">+11.23</td>
+  <td style="color:#2ecc71;font-weight:bold">WIN</td>
+</tr><tr>
+  <td>XAUUSD</td><td>2026-08-21</td>
+  <td>4591.42</td><td>4585.63</td>
+  <td style="color:#00ff88">LONG</td>
+  <td>0.01</td>
+  <td>4592.14</td><td>4603.62</td><td>4580.66</td>
+  <td>9.18</td>
+  <td>4603.62</td><td>TP</td>
+  <td style="color:#2ecc71;font-weight:bold">+11.48</td>
+  <td style="color:#2ecc71;font-weight:bold">WIN</td>
+</tr><tr>
+  <td>XAUUSD</td><td>2026-08-23</td>
+  <td>—</td><td>—</td>
+  <td style="color:#888">—</td>
+  <td>0.01</td>
+  <td>—</td><td>—</td><td>—</td>
+  <td>9.23</td>
+  <td>—</td><td>—</td>
+  <td style="color:#888;font-weight:bold">+0.00</td>
+  <td style="color:#f39c12;font-weight:bold">—</td>
+</tr><tr>
+  <td>XAUUSD</td><td>2026-08-24</td>
+  <td>4646.00</td><td>4642.59</td>
+  <td style="color:#00ff88">LONG</td>
+  <td>0.01</td>
+  <td>4647.20</td><td>4658.82</td><td>4635.58</td>
+  <td>9.29</td>
+  <td>4658.82</td><td>TP</td>
+  <td style="color:#2ecc71;font-weight:bold">+11.62</td>
+  <td style="color:#2ecc71;font-weight:bold">WIN</td>
+</tr><tr>
+  <td>XAUUSD</td><td>2026-08-25</td>
+  <td>4636.90</td><td>4633.66</td>
+  <td style="color:#00ff88">LONG</td>
+  <td>0.01</td>
+  <td>4637.15</td><td>4648.74</td><td>4625.56</td>
+  <td>9.27</td>
+  <td>4625.56</td><td>SL</td>
+  <td style="color:#e74c3c;font-weight:bold">-11.59</td>
+  <td style="color:#e74c3c;font-weight:bold">LOSS</td>
+</tr><tr>
+  <td>XAUUSD</td><td>2026-08-26</td>
+  <td>4620.08</td><td>4614.62</td>
+  <td style="color:#00ff88">LONG</td>
+  <td>0.01</td>
+  <td>4621.25</td><td>4632.80</td><td>4609.70</td>
+  <td>9.24</td>
+  <td>4609.70</td><td>SL</td>
+  <td style="color:#e74c3c;font-weight:bold">-11.55</td>
+  <td style="color:#e74c3c;font-weight:bold">LOSS</td>
+</tr><tr>
+  <td>XAUUSD</td><td>2026-08-27</td>
+  <td>4580.96</td><td>4576.55</td>
+  <td style="color:#00ff88">LONG</td>
+  <td>0.01</td>
+  <td>4583.91</td><td>4595.37</td><td>4572.45</td>
+  <td>9.17</td>
+  <td>4595.37</td><td>TP</td>
+  <td style="color:#2ecc71;font-weight:bold">+11.46</td>
+  <td style="color:#2ecc71;font-weight:bold">WIN</td>
+</tr><tr>
+  <td>XAUUSD</td><td>2026-08-28</td>
+  <td>4607.65</td><td>4604.80</td>
+  <td style="color:#ff4757">SHORT</td>
+  <td>0.01</td>
+  <td>4603.52</td><td>4592.01</td><td>4615.03</td>
+  <td>9.21</td>
+  <td>4592.01</td><td>TP</td>
+  <td style="color:#2ecc71;font-weight:bold">+11.51</td>
+  <td style="color:#2ecc71;font-weight:bold">WIN</td>
+</tr><tr>
+  <td>XAUUSD</td><td>2026-08-30</td>
+  <td>—</td><td>—</td>
+  <td style="color:#888">—</td>
+  <td>0.01</td>
+  <td>—</td><td>—</td><td>—</td>
+  <td>8.90</td>
+  <td>—</td><td>—</td>
+  <td style="color:#888;font-weight:bold">+0.00</td>
+  <td style="color:#f39c12;font-weight:bold">—</td>
+</tr><tr>
+  <td>XAUUSD</td><td>2026-08-31</td>
+  <td>4450.28</td><td>4447.50</td>
+  <td style="color:#00ff88">LONG</td>
+  <td>0.01</td>
+  <td>4450.54</td><td>4461.67</td><td>4439.41</td>
+  <td>8.90</td>
+  <td>4461.67</td><td>TP</td>
+  <td style="color:#2ecc71;font-weight:bold">+11.13</td>
+  <td style="color:#2ecc71;font-weight:bold">WIN</td>
+</tr><tr>
+  <td>XAUUSD</td><td>2026-09-01</td>
+  <td>4385.09</td><td>4381.62</td>
+  <td style="color:#00ff88">LONG</td>
+  <td>0.01</td>
+  <td>4385.42</td><td>4396.38</td><td>4374.46</td>
+  <td>8.77</td>
+  <td>4374.46</td><td>SL</td>
+  <td style="color:#e74c3c;font-weight:bold">-10.96</td>
+  <td style="color:#e74c3c;font-weight:bold">LOSS</td>
+</tr><tr>
+  <td>XAUUSD</td><td>2026-09-02</td>
+  <td>4310.25</td><td>4307.57</td>
+  <td style="color:#00ff88">LONG</td>
+  <td>0.01</td>
+  <td>4310.32</td><td>4321.10</td><td>4299.54</td>
+  <td>8.62</td>
+  <td>4321.10</td><td>TP</td>
+  <td style="color:#2ecc71;font-weight:bold">+10.78</td>
+  <td style="color:#2ecc71;font-weight:bold">WIN</td>
+</tr><tr>
+  <td>XAUUSD</td><td>2026-09-03</td>
+  <td>4424.80</td><td>4419.92</td>
+  <td style="color:#00ff88">LONG</td>
+  <td>0.01</td>
+  <td>4425.74</td><td>4436.80</td><td>4414.68</td>
+  <td>8.85</td>
+  <td>4436.80</td><td>TP</td>
+  <td style="color:#2ecc71;font-weight:bold">+11.06</td>
+  <td style="color:#2ecc71;font-weight:bold">WIN</td>
+</tr></table>
+
+<h2>Charts</h2>
+<div class="charts">
+<img src="XAUUSD_2026-08-05_ORB.png" alt="2026-08-05">
+<img src="XAUUSD_2026-08-06_ORB.png" alt="2026-08-06">
+<img src="XAUUSD_2026-08-07_ORB.png" alt="2026-08-07">
+<img src="XAUUSD_2026-08-10_ORB.png" alt="2026-08-10">
+<img src="XAUUSD_2026-08-11_ORB.png" alt="2026-08-11">
+<img src="XAUUSD_2026-08-12_ORB.png" alt="2026-08-12">
+<img src="XAUUSD_2026-08-13_ORB.png" alt="2026-08-13">
+<img src="XAUUSD_2026-08-14_ORB.png" alt="2026-08-14">
+<img src="XAUUSD_2026-08-17_ORB.png" alt="2026-08-17">
+<img src="XAUUSD_2026-08-18_ORB.png" alt="2026-08-18">
+<img src="XAUUSD_2026-08-19_ORB.png" alt="2026-08-19">
+<img src="XAUUSD_2026-08-20_ORB.png" alt="2026-08-20">
+<img src="XAUUSD_2026-08-21_ORB.png" alt="2026-08-21">
+<img src="XAUUSD_2026-08-24_ORB.png" alt="2026-08-24">
+<img src="XAUUSD_2026-08-25_ORB.png" alt="2026-08-25">
+<img src="XAUUSD_2026-08-26_ORB.png" alt="2026-08-26">
+<img src="XAUUSD_2026-08-27_ORB.png" alt="2026-08-27">
+<img src="XAUUSD_2026-08-28_ORB.png" alt="2026-08-28">
+<img src="XAUUSD_2026-08-31_ORB.png" alt="2026-08-31">
+<img src="XAUUSD_2026-09-01_ORB.png" alt="2026-09-01">
+<img src="XAUUSD_2026-09-02_ORB.png" alt="2026-09-02">
+<img src="XAUUSD_2026-09-03_ORB.png" alt="2026-09-03">
+</div></body></html>
