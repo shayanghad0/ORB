@@ -32,6 +32,9 @@ use strategy and find signal then enter didnt set a TP or SL update with Milisec
 
 with this 100% like indicator and 100% pythoncode backtest
 
+
+if use claude
+
 ```pinescript
 // This Pine Script® code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
 // © shayanghad0 (modified for time‑based ORB with fixed range window)
