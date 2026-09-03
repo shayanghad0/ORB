@@ -1,50 +1,183 @@
 import MetaTrader5 as mt5
 from datetime import datetime, timedelta, time
-import math
+from collections import defaultdict
+import sys
+import time as time_module
 
 # ----------------------------------------------------------------------
 # User inputs
 # ----------------------------------------------------------------------
-symbol = input("Enter symbol (e.g. XAUUSD): ").strip().upper()
+symbol_input = input("Enter symbol (e.g. XAUUSD): ").strip().upper()
 days = int(input("Enter number of days to backtest: "))
 balance = float(input("Enter starting balance (account currency): "))
 lot = float(input("Enter lot size per trade: "))
 
 # ----------------------------------------------------------------------
-# Connect to MT5
+# Connect to MT5 and login
 # ----------------------------------------------------------------------
 if not mt5.initialize():
-    print("MT5 initialization failed")
-    quit()
+    print("MT5 initialization failed, error code =", mt5.last_error())
+    sys.exit(1)
 
-# Check if symbol exists
+print("\n--- MT5 Login ---")
+login = input("Enter account login (number): ").strip()
+password = input("Enter account password: ").strip()
+server = input("Enter server name (optional, press Enter to skip): ").strip()
+
+# Remove quotes if present
+if password.startswith('"') and password.endswith('"'):
+    password = password[1:-1]
+if server.startswith('"') and server.endswith('"'):
+    server = server[1:-1]
+
+login_params = {"login": int(login), "password": password}
+if server:
+    login_params["server"] = server
+
+print(f"Logging in to account {login} ...")
+authorized = mt5.login(**login_params)
+if not authorized:
+    print("Login failed. Error code:", mt5.last_error())
+    mt5.shutdown()
+    sys.exit(1)
+
+account_info = mt5.account_info()
+if account_info is None:
+    print("Login succeeded but failed to retrieve account info.")
+    mt5.shutdown()
+    sys.exit(1)
+
+print("Login successful!")
+print(f"Account: {account_info.login}")
+print(f"Server:  {account_info.server}")
+print(f"Balance: {account_info.balance}")
+print(f"Currency:{account_info.currency}")
+
+terminal_info = mt5.terminal_info()
+if terminal_info is None or not terminal_info.connected:
+    print("Terminal is not connected to the broker server.")
+    mt5.shutdown()
+    sys.exit(1)
+
+# ----------------------------------------------------------------------
+# Identify the correct symbol
+# ----------------------------------------------------------------------
+all_symbols = mt5.symbols_get()
+if all_symbols is None:
+    print("Failed to retrieve symbol list.")
+    mt5.shutdown()
+    sys.exit(1)
+
+candidates = [s.name for s in all_symbols if symbol_input.lower() in s.name.lower()]
+if not candidates:
+    print(f"No symbol containing '{symbol_input}' found.")
+    print("Available symbols (first 20):")
+    for i, s in enumerate(all_symbols[:20]):
+        print(f"  {s.name}")
+    mt5.shutdown()
+    sys.exit(1)
+
+exact_match = [s for s in candidates if s.upper() == symbol_input]
+if len(exact_match) == 1:
+    symbol = exact_match[0]
+else:
+    print(f"Multiple symbols found containing '{symbol_input}':")
+    for i, s in enumerate(candidates):
+        print(f"  {i+1}. {s}")
+    choice = input("Select number (or press Enter to use the first): ").strip()
+    if choice == "":
+        symbol = candidates[0]
+    else:
+        try:
+            idx = int(choice) - 1
+            symbol = candidates[idx]
+        except:
+            print("Invalid choice. Exiting.")
+            mt5.shutdown()
+            sys.exit(1)
+
+print(f"\nUsing symbol: {symbol}")
+
+# Get symbol info
 symbol_info = mt5.symbol_info(symbol)
 if symbol_info is None:
-    print(f"Symbol {symbol} not found")
+    print(f"Symbol {symbol} not found.")
     mt5.shutdown()
-    quit()
+    sys.exit(1)
 
-# Ensure the symbol is selected in Market Watch (optional)
+print("\n--- Symbol Information ---")
+print(f"Name: {symbol_info.name}")
+print(f"Description: {symbol_info.description}")
+print(f"Trade mode: {symbol_info.trade_mode} (0=disabled, 1=long only, 2=short only, 3=close only, 4=full)")
+print(f"Digits: {symbol_info.digits}")
+print(f"Contract size: {symbol_info.trade_contract_size}")
+print(f"Volume min/max: {symbol_info.volume_min}/{symbol_info.volume_max}")
+print(f"Spread: {symbol_info.spread}")
+print(f"Tick size: {symbol_info.trade_tick_size}")
+print(f"Tick value: {symbol_info.trade_tick_value}")
+print(f"Trade allowed: {'Yes' if symbol_info.trade_mode == 4 else 'No'}")
+
+# Ensure symbol is selected in Market Watch
 if not symbol_info.visible:
+    print(f"Selecting {symbol} in Market Watch...")
     if not mt5.symbol_select(symbol, True):
         print(f"Failed to select {symbol}")
         mt5.shutdown()
-        quit()
+        sys.exit(1)
+    else:
+        # Wait a moment for history to be downloaded (optional)
+        time_module.sleep(2)
 
 # ----------------------------------------------------------------------
-# Fetch historical 1-minute data
+# Test data availability: try to get just 1 bar
 # ----------------------------------------------------------------------
-# We need data from (today - days) to now, but we'll fetch a bit extra to cover weekends/holidays
-end_date = datetime.now()
-start_date = end_date - timedelta(days=days + 10)  # extra buffer
+print("\nTesting data availability...")
+test_rates = mt5.copy_rates_from_pos(symbol, mt5.TIMEFRAME_M1, 0, 1)
+if test_rates is None or len(test_rates) == 0:
+    print("copy_rates_from_pos(1 bar) failed. Trying copy_rates_from with last hour...")
+    now = datetime.now()
+    start = now - timedelta(hours=1)
+    test_rates = mt5.copy_rates_from(symbol, mt5.TIMEFRAME_M1, start, 1)
+    if test_rates is None or len(test_rates) == 0:
+        print("No 1-minute data available for this symbol.")
+        print("Possible reasons:")
+        print("- The symbol is not available for your account type (e.g., CFD not enabled).")
+        print("- The broker does not provide 1-minute history for this symbol.")
+        print("- You may need to open a chart for this symbol in the MT5 terminal first.")
+        print("- The symbol might be named differently (e.g., GOLD instead of XAUUSD).")
+        mt5.shutdown()
+        sys.exit(1)
+    else:
+        print("Data is available using copy_rates_from with a short range.")
+else:
+    print("Data is available using copy_rates_from_pos.")
 
-rates = mt5.copy_rates_range(symbol, mt5.TIMEFRAME_M1, start_date, end_date)
+# ----------------------------------------------------------------------
+# Fetch historical 1-minute data (now we know it works)
+# ----------------------------------------------------------------------
+print("Fetching full historical data...")
+MAX_BARS = 100000
+rates = mt5.copy_rates_from_pos(symbol, mt5.TIMEFRAME_M1, 0, MAX_BARS)
+
 if rates is None or len(rates) == 0:
-    print("Failed to get historical data")
-    mt5.shutdown()
-    quit()
+    print("copy_rates_from_pos failed for full range. Trying copy_rates_range...")
+    end_date = datetime.now()
+    start_date = end_date - timedelta(days=200)
+    rates = mt5.copy_rates_range(symbol, mt5.TIMEFRAME_M1, start_date, end_date)
 
-# Convert to list of dictionaries for easier handling
+if rates is None or len(rates) == 0:
+    print("Failed to get historical data.")
+    print("Last error:", mt5.last_error())
+    mt5.shutdown()
+    sys.exit(1)
+
+print(f"Downloaded {len(rates)} 1-minute bars.")
+
+# Rest of the script remains the same...
+# (convert to bars, group by date, backtest, etc.)
+# I'll include the rest for completeness but you can keep your existing code from here onward.
+# ----------------------------------------------------------------------
+# Convert to list of dictionaries
 bars = []
 for r in rates:
     bars.append({
@@ -55,87 +188,75 @@ for r in rates:
         'close': r['close'],
     })
 
-# Group bars by trading date (ignore weekends, but we'll filter later)
-from collections import defaultdict
+# Group bars by trading date (filter to only the trading window 09:30-11:30)
 bars_by_date = defaultdict(list)
 for bar in bars:
-    # Only consider bars between 09:30 and 11:30 (server time)
     t = bar['time'].time()
     if time(9, 30) <= t < time(11, 30):
         bars_by_date[bar['time'].date()].append(bar)
 
-# Sort dates and keep only the most recent 'days' days that have data
 dates = sorted(bars_by_date.keys())
 if len(dates) > days:
     dates = dates[-days:]
 
-print(f"\nBacktesting {len(dates)} trading days for {symbol}")
+print(f"Found {len(dates)} trading days with data in the trading window.")
+
+if len(dates) == 0:
+    print("No data in the 09:30-11:30 window. Check your server timezone or the symbol's trading hours.")
+    mt5.shutdown()
+    sys.exit(1)
 
 # ----------------------------------------------------------------------
 # Strategy parameters (fixed)
 # ----------------------------------------------------------------------
-ORB_START = time(9, 30)
-ORB_END = time(9, 36)          # includes bars 09:30-09:35 (6 bars)
-TRADE_END = time(11, 30)       # last bar open < 11:30 (i.e. 11:29)
-TP_PCT = 0.005                 # 0.5%
-SL_PCT = 0.0025                # 0.25%
-
+TP_PCT = 0.005
+SL_PCT = 0.0025
 contract_size = symbol_info.trade_contract_size
 if contract_size == 0:
     print("Contract size is zero, cannot compute profit. Exiting.")
     mt5.shutdown()
-    quit()
+    sys.exit(1)
 
-# ----------------------------------------------------------------------
-# Helper to compute margin for a trade
-# ----------------------------------------------------------------------
+# Helper to compute margin
 def compute_margin(order_type, price):
-    """Return required margin for a trade, or None if error."""
     if order_type == 'buy':
         mt5_order_type = mt5.ORDER_TYPE_BUY
     else:
         mt5_order_type = mt5.ORDER_TYPE_SELL
     margin = mt5.order_calc_margin(mt5_order_type, symbol, lot, price)
     if margin is None:
+        print("Margin calculation error:", mt5.last_error())
         return None
     return margin
 
-# ----------------------------------------------------------------------
 # Main backtest loop
-# ----------------------------------------------------------------------
 trades = []
 current_balance = balance
 
 for day in dates:
     day_bars = bars_by_date[day]
-    if len(day_bars) < 7:   # need at least 6 ORB bars + 1 breakout bar
+    if len(day_bars) < 7:
         continue
 
-    # The bars are already sorted chronologically
-    # First 6 bars = opening range (09:30-09:35)
     orb_bars = day_bars[:6]
     orb_high = max(b['high'] for b in orb_bars)
     orb_low = min(b['low'] for b in orb_bars)
 
-    # Previous close for the first breakout bar (close of the last ORB bar)
     prev_close = orb_bars[-1]['close']
 
     trade_active = False
     entry_price = None
-    direction = 0          # 1 = long, -1 = short
+    direction = 0
     tp_price = None
     sl_price = None
     exit_price = None
     exit_reason = None
 
-    # Iterate over breakout bars (from index 6 onwards)
     for i in range(6, len(day_bars)):
         bar = day_bars[i]
 
         if not trade_active:
-            # Check for long breakout
             if bar['close'] > orb_high and prev_close <= orb_high:
-                # Check margin
                 margin = compute_margin('buy', bar['close'])
                 if margin is None:
                     print(f"Margin calculation failed on {day} for long entry. Skipping trade.")
@@ -148,8 +269,6 @@ for day in dates:
                 tp_price = entry_price * (1 + TP_PCT)
                 sl_price = entry_price * (1 - SL_PCT)
                 trade_active = True
-                # do not check TP/SL on entry bar
-            # Check for short breakout
             elif bar['close'] < orb_low and prev_close >= orb_low:
                 margin = compute_margin('sell', bar['close'])
                 if margin is None:
@@ -164,12 +283,10 @@ for day in dates:
                 sl_price = entry_price * (1 + SL_PCT)
                 trade_active = True
 
-            # update previous close for next bar
             prev_close = bar['close']
 
         else:
-            # Check exit conditions (TP first, then SL)
-            if direction == 1:   # long
+            if direction == 1:
                 if bar['high'] >= tp_price:
                     exit_price = tp_price
                     exit_reason = 'TP'
@@ -178,7 +295,7 @@ for day in dates:
                     exit_price = sl_price
                     exit_reason = 'SL'
                     break
-            else:                # short
+            else:
                 if bar['low'] <= tp_price:
                     exit_price = tp_price
                     exit_reason = 'TP'
@@ -187,20 +304,14 @@ for day in dates:
                     exit_price = sl_price
                     exit_reason = 'SL'
                     break
-            # No exit yet, continue
 
-    # If trade is still active at end of session, close at last bar's close
     if trade_active and exit_price is None:
         exit_price = day_bars[-1]['close']
         exit_reason = 'EOD'
 
-    # Record the trade if one was opened
     if trade_active:
-        # Compute profit in account currency (assumes USD account, or symbol quote = account currency)
-        # For XAUUSD: profit = (exit - entry) * direction * lot * contract_size
         profit = (exit_price - entry_price) * direction * lot * contract_size
         current_balance += profit
-
         trades.append({
             'date': day,
             'direction': 'LONG' if direction == 1 else 'SHORT',
@@ -211,11 +322,9 @@ for day in dates:
             'balance_after': current_balance,
         })
 
-# ----------------------------------------------------------------------
 # Output results
-# ----------------------------------------------------------------------
 print("\n" + "="*60)
-print(f"Backtest Results for {symbol} ({days} days, lot={lot})")
+print(f"Backtest Results for {symbol} ({len(dates)} days, lot={lot})")
 print("="*60)
 if not trades:
     print("No trades were executed.")
