@@ -1,0 +1,18 @@
+{
+  "orb_high": 4310.25,
+  "orb_low": 4307.57,
+  "signal": "LONG",
+  "entry": {
+    "price": 4310.32,
+    "time": "2026-09-02T09:49:00-04:00"
+  },
+  "tp": 4331.8715999999995,
+  "sl": 4299.5442,
+  "exit_price": 4331.8715999999995,
+  "exit_time": "2026-09-02T10:35:00-04:00",
+  "exit_type": "TP",
+  "outcome": "WIN",
+  "symbol": "XAUUSD",
+  "date": "2026-09-02",
+  "range_bar_count": 6
+}
