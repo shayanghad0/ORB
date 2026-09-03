@@ -411,7 +411,10 @@ def main():
 
         pnl = result.get('pnl', 0)
         pnl_s = f"+{pnl:.2f}" if pnl >= 0 else f"{pnl:.2f}"
-        print(f'  ORB: {result["orb_high"]:.2f}/{result["orb_low"]:.2f}')
+        if result['orb_high'] is not None:
+            print(f'  ORB: {result["orb_high"]:.2f}/{result["orb_low"]:.2f}')
+        else:
+            print('  ORB: No range built')
         print(f'  {result["signal"] or "NO TRADE":>5}  {lot_size} lots  Margin: ${margin:.2f}  P&L: {pnl_s}  Balance: ${running_balance:,.2f}')
         all_results.append(result)
 
