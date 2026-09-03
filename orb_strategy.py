@@ -16,7 +16,7 @@ RANGE_END   = datetime.time(9, 37)   # exclusive
 TRADE_START = datetime.time(9, 30)
 TRADE_END   = datetime.time(11, 30)  # exclusive
 
-TP_PCT = 0.005   # 0.5 %
+TP_PCT = 0.0025   # 0.5 %
 SL_PCT = 0.0025  # 0.25 %
 
 CONTRACT_SIZE = 100  # XAUUSD = 100 oz per lot
