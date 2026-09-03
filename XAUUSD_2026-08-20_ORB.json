@@ -1,0 +1,23 @@
+{
+  "orb_high": 4494.63,
+  "orb_low": 4492.17,
+  "signal": "SHORT",
+  "entry": {
+    "price": 4491.18,
+    "time": "2026-08-20T09:38:00-04:00"
+  },
+  "tp": 4468.7241,
+  "sl": 4502.40795,
+  "exit_price": 4468.7241,
+  "exit_time": "2026-08-20T10:46:00-04:00",
+  "exit_type": "TP",
+  "outcome": "WIN",
+  "lots": 0.02,
+  "pnl": 44.91,
+  "margin": 17.96,
+  "free_margin": 982.04,
+  "symbol": "XAUUSD",
+  "date": "2026-08-20",
+  "balance_after": 1044.91,
+  "range_bar_count": 6
+}

@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<title>ORB Strategy Results</title>
+<style>
+  body { background:#0f0f23; color:#ccc; font-family:Consolas,monospace; padding:20px; }
+  h1 { color:#f1c40f; text-align:center; }
+  h2 { color:#3498db; margin-top:30px; }
+  .summary { display:flex; gap:20px; justify-content:center; flex-wrap:wrap; margin:20px 0; }
+  .card { background:#1a1a2e; border:1px solid #333; border-radius:8px; padding:15px 25px; text-align:center; min-width:160px; }  
+  .card .label { color:#888; font-size:12px; }
+  .card .value { color:#f1c40f; font-size:22px; font-weight:bold; margin-top:5px; }
+  table { border-collapse:collapse; width:100%; margin-top:20px; }
+  th { background:#1a1a2e; color:#f1c40f; padding:10px; border:1px solid #333; font-size:12px; }
+  td { padding:8px 10px; border:1px solid #333; text-align:center; }
+  tr:hover { background:#1a1a2e; }
+  .charts { display:flex; flex-wrap:wrap; gap:10px; justify-content:center; margin-top:30px; }
+  .charts img { max-width:600px; border:1px solid #333; border-radius:6px; }
+</style></head><body>
+<h1>ORB - Opening Range Breakout Results</h1>
+
+<div class="summary">
+  <div class="card"><div class="label">Starting Balance</div><div class="value">$1,000.00</div></div>
+  <div class="card"><div class="label">Final Balance</div><div class="value" style="color:#2ecc71">$1,044.91</div></div>
+  <div class="card"><div class="label">Total P&L</div><div class="value" style="color:#2ecc71">+44.91</div></div>
+  <div class="card"><div class="label">Leverage</div><div class="value">1:500</div></div>
+  <div class="card"><div class="label">Trades</div><div class="value">1</div></div>
+  <div class="card"><div class="label">Win Rate</div><div class="value">100.0%</div></div>
+  <div class="card"><div class="label">Wins / Losses</div><div class="value">1 / 0</div></div>
+</div>
+
+<h2>Trade Log</h2>
+<table>
+<tr><th>Symbol</th><th>Date</th><th>ORB High</th><th>ORB Low</th>
+<th>Signal</th><th>Lots</th><th>Entry</th><th>TP</th><th>SL</th>
+<th>Margin</th><th>Exit</th><th>Type</th><th>P&L</th><th>Outcome</th></tr>
+<tr>
+  <td>XAUUSD</td><td>2026-08-20</td>
+  <td>4494.63</td><td>4492.17</td>
+  <td style="color:#ff4757">SHORT</td>
+  <td>0.02</td>
+  <td>4491.18</td><td>4468.72</td><td>4502.41</td>
+  <td>17.96</td>
+  <td>4468.72</td><td>TP</td>
+  <td style="color:#2ecc71;font-weight:bold">+44.91</td>
+  <td style="color:#2ecc71;font-weight:bold">WIN</td>
+</tr></table>
+
+<h2>Charts</h2>
+<div class="charts">
+<img src="XAUUSD_2026-08-20_ORB.png" alt="2026-08-20">
+</div></body></html>
