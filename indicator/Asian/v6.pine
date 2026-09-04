@@ -1,0 +1,351 @@
+// This Pine Script® code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © shayanghad0 (modified for time‑based ORB with fixed range window)
+// Modified: added Asian timezones & default Tokyo session
+
+//@version=6
+indicator('ORB - Opening Range Breakout (Time-based)', overlay = true, max_labels_count = 500, max_lines_count = 500)
+
+// ─────────────────────────────────────────────
+// INPUTS — Strategy
+// ─────────────────────────────────────────────
+// Set the end time ONE MINUTE later than your desired last bar.
+// Example: to include the 09:05 bar, use "0900-0906"
+range_session = input.session('0900-0906', 'Opening Range Window (exchange time)', tooltip = 'Bars with open time >= start and < end are included. To include the 09:05 bar, set end to 09:06.')
+trade_session = input.session('0900-1130', 'Trading Window (exchange time)', tooltip = 'Breakout signals are only generated within this window.')
+
+// Timezone selector – now includes Asian timezones (default Tokyo)
+timezone = input.string('Asia/Tokyo', 'Timezone', options = ['America/New_York', 'Europe/London', 'Asia/Tokyo', 'Asia/Singapore', 'Australia/Sydney'], tooltip = 'Timezone used for session interpretation')
+
+tp_pct = input.float(0.5, 'TP %', minval = 0.01, step = 0.05, group = 'Strategy', tooltip = 'Take Profit as % of entry price.') / 100
+sl_pct = input.float(0.25, 'SL %', minval = 0.01, step = 0.05, group = 'Strategy', tooltip = 'Stop Loss as % of entry price.') / 100
+
+partial_close_at = input.float(50, 'Partial Close at % of TP', minval = 1, maxval = 100, step = 1, group = 'Strategy', tooltip = 'Close 50% of position when price reaches this % of the TP target. Default 50% means halfway to TP.') / 100
+sl_after_partial = input.float(12.5, 'SL after partial close (% above entry)', minval = 0.1, step = 0.5, group = 'Strategy', tooltip = 'After partial close, move SL to this % above entry (long) or below entry (short).') / 100
+
+// ─────────────────────────────────────────────
+// INPUTS — Display
+// ─────────────────────────────────────────────
+show_range = input.bool(true, 'Show Opening Range Box', group = 'Display')
+show_labels = input.bool(true, 'Show Entry / TP / SL labels', group = 'Display')
+show_signals = input.bool(true, 'Show Breakout Signal Arrow', group = 'Display')
+show_bg = input.bool(true, 'Show background highlight', group = 'Display')
+
+label_offset = input.int(40, 'Label offset (bars right of signal)', minval = 0, maxval = 500, group = 'Label Position', tooltip = 'Increase to push labels further right.')
+label_size = input.string('small', 'Label size', options = ['tiny', 'small', 'normal', 'large'], group = 'Label Position')
+line_length = input.int(500, 'Line length (bars to the right)', minval = 10, maxval = 5000, group = 'Line Length')
+
+col_bull = input.color(color.new(color.lime, 40), 'Bullish color', group = 'Colors')
+col_bear = input.color(color.new(color.red, 40), 'Bearish color', group = 'Colors')
+col_entry = input.color(color.yellow, 'Entry color', group = 'Colors')
+col_tp = input.color(color.lime, 'TP color', group = 'Colors')
+col_sl = input.color(color.red, 'SL color', group = 'Colors')
+
+// ─────────────────────────────────────────────
+// LABEL SIZE
+// ─────────────────────────────────────────────
+lsize = switch label_size
+    'tiny' => size.tiny
+    'normal' => size.normal
+    'large' => size.large
+    => size.small
+
+// ─────────────────────────────────────────────
+// SESSION DETECTION (with timezone)
+// ─────────────────────────────────────────────
+in_trade = not na(time(timeframe.period, trade_session, timezone))
+in_range = not na(time(timeframe.period, range_session, timezone))
+
+// Detect first bar of the trading session (for reset)
+var bool session_start = false
+if in_trade and not in_trade[1]
+    session_start := true
+    session_start
+else
+    session_start := false
+    session_start
+
+// ─────────────────────────────────────────────
+// STATE VARIABLES
+// ─────────────────────────────────────────────
+var float orb_high = na
+var float orb_low = na
+var bool range_locked = false
+var bool range_building = false
+var int range_start_bar = na
+var int range_bar_count = 0 // for debugging / display
+
+var bool trade_active = false
+var bool trade_long = false
+var float entry_price = na
+var float tp_price = na
+var float sl_price = na
+var bool day_done = false
+var bool partial_closed = false
+var float sl_after_entry = na
+var int signal_bar = na
+
+var box bx_range = na
+var line ln_entry = na
+var line ln_tp = na
+var line ln_sl = na
+var label lb_entry = na
+var label lb_tp = na
+var label lb_sl = na
+
+// ─────────────────────────────────────────────
+// RESET ON NEW SESSION
+// ─────────────────────────────────────────────
+if session_start
+    orb_high := na
+    orb_low := na
+    range_locked := false
+    range_building := false
+    range_start_bar := na
+    range_bar_count := 0
+    trade_active := false
+    entry_price := na
+    tp_price := na
+    sl_price := na
+    day_done := false
+    partial_closed := false
+    sl_after_entry := na
+    signal_bar := na
+
+    line.delete(ln_entry)
+    ln_entry := na
+    line.delete(ln_tp)
+    ln_tp := na
+    line.delete(ln_sl)
+    ln_sl := na
+    label.delete(lb_entry)
+    lb_entry := na
+    label.delete(lb_tp)
+    lb_tp := na
+    label.delete(lb_sl)
+    lb_sl := na
+    box.delete(bx_range)
+    bx_range := na
+    bx_range
+
+// ─────────────────────────────────────────────
+// BUILD OPENING RANGE (time‑based)
+// ─────────────────────────────────────────────
+if in_range and not range_locked
+    if na(orb_high)
+        orb_high := high
+        orb_low := low
+        range_building := true
+        range_start_bar := bar_index
+        range_bar_count := 1
+        range_bar_count
+    else
+        orb_high := math.max(orb_high, high)
+        orb_low := math.min(orb_low, low)
+        range_bar_count := range_bar_count + 1
+        range_bar_count
+
+// Lock the range when we leave the range window
+if not in_range and range_building and not range_locked
+    range_locked := true
+    if show_range and not na(range_start_bar)
+        box.delete(bx_range)
+        // End bar is the last bar inside the window = bar_index - 1
+        bx_range := box.new(range_start_bar, orb_high, bar_index - 1, orb_low, border_color = color.gray, bgcolor = color.new(color.gray, 75))
+        bx_range
+
+// ─────────────────────────────────────────────
+// SIGNAL DETECTION (only after range is locked)
+// ─────────────────────────────────────────────
+bullish_bo = range_locked and not day_done and not trade_active and in_trade and close > orb_high and close[1] <= orb_high
+
+bearish_bo = range_locked and not day_done and not trade_active and in_trade and close < orb_low and close[1] >= orb_low
+
+// ─────────────────────────────────────────────
+// ENTER — LONG
+// ─────────────────────────────────────────────
+if bullish_bo
+    trade_active := true
+    trade_long := true
+    entry_price := close
+    tp_price := entry_price * (1 + tp_pct)
+    sl_price := entry_price * (1 - sl_pct)
+    signal_bar := bar_index
+
+    line.delete(ln_entry)
+    ln_entry := na
+    line.delete(ln_tp)
+    ln_tp := na
+    line.delete(ln_sl)
+    ln_sl := na
+    label.delete(lb_entry)
+    lb_entry := na
+    label.delete(lb_tp)
+    lb_tp := na
+    label.delete(lb_sl)
+    lb_sl := na
+
+    int end_bar = bar_index + line_length
+    ln_entry := line.new(bar_index, entry_price, end_bar, entry_price, color = col_entry, width = 1, style = line.style_dashed, extend = extend.none)
+    ln_tp := line.new(bar_index, tp_price, end_bar, tp_price, color = col_tp, width = 2, style = line.style_dashed, extend = extend.none)
+    ln_sl := line.new(bar_index, sl_price, end_bar, sl_price, color = col_sl, width = 2, style = line.style_dashed, extend = extend.none)
+
+    if show_labels
+        lb_entry := label.new(bar_index + label_offset, entry_price, 'ENTRY ' + str.tostring(entry_price, '#.#####'), style = label.style_label_left, color = col_entry, textcolor = color.black, size = lsize)
+        lb_tp := label.new(bar_index + label_offset, tp_price, 'TP +0.5% ' + str.tostring(tp_price, '#.#####'), style = label.style_label_left, color = col_tp, textcolor = color.black, size = lsize)
+        lb_sl := label.new(bar_index + label_offset, sl_price, 'SL -0.25% ' + str.tostring(sl_price, '#.#####'), style = label.style_label_left, color = col_sl, textcolor = color.black, size = lsize)
+        lb_sl
+
+    if show_signals
+        label.new(bar_index, low - (high - low), '▲ LONG\n' + str.tostring(close, '#.#####'), style = label.style_label_up, color = col_bull, textcolor = color.black, size = size.normal)
+
+// ─────────────────────────────────────────────
+// ENTER — SHORT
+// ─────────────────────────────────────────────
+if bearish_bo
+    trade_active := true
+    trade_long := false
+    entry_price := close
+    tp_price := entry_price * (1 - tp_pct)
+    sl_price := entry_price * (1 + sl_pct)
+    signal_bar := bar_index
+
+    line.delete(ln_entry)
+    ln_entry := na
+    line.delete(ln_tp)
+    ln_tp := na
+    line.delete(ln_sl)
+    ln_sl := na
+    label.delete(lb_entry)
+    lb_entry := na
+    label.delete(lb_tp)
+    lb_tp := na
+    label.delete(lb_sl)
+    lb_sl := na
+
+    int end_bar = bar_index + line_length
+    ln_entry := line.new(bar_index, entry_price, end_bar, entry_price, color = col_entry, width = 1, style = line.style_dashed, extend = extend.none)
+    ln_tp := line.new(bar_index, tp_price, end_bar, tp_price, color = col_tp, width = 2, style = line.style_dashed, extend = extend.none)
+    ln_sl := line.new(bar_index, sl_price, end_bar, sl_price, color = col_sl, width = 2, style = line.style_dashed, extend = extend.none)
+
+    if show_labels
+        lb_entry := label.new(bar_index + label_offset, entry_price, 'ENTRY ' + str.tostring(entry_price, '#.#####'), style = label.style_label_left, color = col_entry, textcolor = color.black, size = lsize)
+        lb_tp := label.new(bar_index + label_offset, tp_price, 'TP -0.5% ' + str.tostring(tp_price, '#.#####'), style = label.style_label_left, color = col_tp, textcolor = color.black, size = lsize)
+        lb_sl := label.new(bar_index + label_offset, sl_price, 'SL +0.25% ' + str.tostring(sl_price, '#.#####'), style = label.style_label_left, color = col_sl, textcolor = color.black, size = lsize)
+        lb_sl
+
+    if show_signals
+        label.new(bar_index, high + high - low, '▼ SHORT\n' + str.tostring(close, '#.#####'), style = label.style_label_down, color = col_bear, textcolor = color.black, size = size.normal)
+
+// ─────────────────────────────────────────────
+// MANAGE OPEN TRADE — TP / SL HIT
+// ─────────────────────────────────────────────
+if trade_active
+    hit_tp = trade_long and high >= tp_price
+    hit_sl = trade_long and low <= sl_price
+    hit_tp_s = not trade_long and low <= tp_price
+    hit_sl_s = not trade_long and high >= sl_price
+
+    // ── PARTIAL CLOSE: 50% of position at 50% of TP ──
+    if not partial_closed
+        _half_tp = trade_long ? entry_price + (tp_price - entry_price) * partial_close_at : entry_price - (entry_price - tp_price) * partial_close_at
+        _hit_half = trade_long ? high >= _half_tp : low <= _half_tp
+
+        if _hit_half
+            partial_closed := true
+            sl_after_entry := trade_long ? entry_price * (1 + sl_after_partial) : entry_price * (1 - sl_after_partial)
+
+            // Update SL line to breakeven + buffer
+            line.delete(ln_sl)
+            ln_sl := line.new(bar_index, sl_after_entry, bar_index + line_length, sl_after_entry, color = color.orange, width = 2, style = line.style_dashed, extend = extend.none)
+
+            // Update SL label
+            label.delete(lb_sl)
+            if show_labels
+                _sl_txt = 'SL BREAKEVEN+' + str.tostring(sl_after_partial * 100, '#.#') + '% ' + str.tostring(sl_after_entry, '#.#####')
+                lb_sl := label.new(bar_index + label_offset, sl_after_entry, _sl_txt, style = label.style_label_left, color = color.orange, textcolor = color.black, size = lsize)
+                lb_sl
+
+            // Show partial close label
+            _y = trade_long ? high : low
+            _style = trade_long ? label.style_label_down : label.style_label_up
+            label.new(bar_index, _y, '⚡ 50% CLOSE\nSL → ' + str.tostring(sl_after_entry, '#.#####'), style = _style, color = color.orange, textcolor = color.black, size = size.small)
+
+    if hit_tp or hit_tp_s
+        _y = trade_long ? high : low
+        _style = trade_long ? label.style_label_down : label.style_label_up
+        label.new(bar_index, _y, '✅ TP HIT', style = _style, color = color.lime, textcolor = color.black, size = size.small)
+        line.delete(ln_entry)
+        ln_entry := na
+        line.delete(ln_tp)
+        ln_tp := na
+        line.delete(ln_sl)
+        ln_sl := na
+        label.delete(lb_entry)
+        lb_entry := na
+        label.delete(lb_tp)
+        lb_tp := na
+        label.delete(lb_sl)
+        lb_sl := na
+        trade_active := false
+        day_done := true
+        day_done
+
+    else if hit_sl or hit_sl_s
+        _y = trade_long ? low : high
+        _style = trade_long ? label.style_label_up : label.style_label_down
+        label.new(bar_index, _y, '❌ SL HIT\n⏳ Wait tomorrow', style = _style, color = color.red, textcolor = color.white, size = size.small)
+        line.delete(ln_entry)
+        ln_entry := na
+        line.delete(ln_tp)
+        ln_tp := na
+        line.delete(ln_sl)
+        ln_sl := na
+        label.delete(lb_entry)
+        lb_entry := na
+        label.delete(lb_tp)
+        lb_tp := na
+        label.delete(lb_sl)
+        lb_sl := na
+        trade_active := false
+        day_done := true
+        day_done
+
+// ─────────────────────────────────────────────
+// BACKGROUND HIGHLIGHTS — CORRECTED (returns color or na)
+// ─────────────────────────────────────────────
+bgcolor(show_bg and in_range and not range_locked ? color.new(color.blue, 90) : na, title = 'Range-building bars')
+bgcolor(show_bg and trade_active and trade_long ? color.new(color.lime, 95) : na, title = 'Long active')
+bgcolor(show_bg and trade_active and not trade_long ? color.new(color.red, 95) : na, title = 'Short active')
+
+// ─────────────────────────────────────────────
+// DASHBOARD
+// ─────────────────────────────────────────────
+var table dash = table.new(position.top_right, 2, 7, border_width = 1)
+
+if barstate.islast
+    table.cell(dash, 0, 0, 'ORB ' + range_session + ' (' + timezone + ')', bgcolor = color.navy, text_color = color.white, text_size = size.small)
+    table.cell(dash, 1, 0, '', bgcolor = color.navy)
+
+    table.cell(dash, 0, 1, 'Range', bgcolor = color.gray, text_color = color.white, text_size = size.tiny)
+    table.cell(dash, 1, 1, range_locked ? str.tostring(orb_high, '#.#####') + ' / ' + str.tostring(orb_low, '#.#####') + ' (' + str.tostring(range_bar_count) + ' bars)' : 'Building...', bgcolor = color.gray, text_color = color.white, text_size = size.tiny)
+
+    status_txt = day_done ? 'Done for today' : trade_active ? trade_long ? 'LONG active' : 'SHORT active' : range_locked ? 'Watching...' : 'Range building'
+    status_col = day_done ? color.gray : trade_active ? trade_long ? color.lime : color.red : color.blue
+    table.cell(dash, 0, 2, 'Status', bgcolor = color.black, text_color = color.white, text_size = size.tiny)
+    table.cell(dash, 1, 2, status_txt, bgcolor = status_col, text_color = color.black, text_size = size.tiny)
+
+    table.cell(dash, 0, 3, 'Entry', bgcolor = color.black, text_color = color.white, text_size = size.tiny)
+    table.cell(dash, 1, 3, not na(entry_price) ? str.tostring(entry_price, '#.#####') : '—', bgcolor = color.black, text_color = color.yellow, text_size = size.tiny)
+
+    _tp_label = partial_closed ? 'TP (50% hit)' : 'TP'
+    table.cell(dash, 0, 4, _tp_label, bgcolor = color.black, text_color = color.white, text_size = size.tiny)
+    table.cell(dash, 1, 4, not na(tp_price) ? str.tostring(tp_price, '#.#####') : '—', bgcolor = color.black, text_color = color.lime, text_size = size.tiny)
+
+    _sl_label = partial_closed ? 'SL (moved)' : 'SL'
+    table.cell(dash, 0, 5, _sl_label, bgcolor = color.black, text_color = color.white, text_size = size.tiny)
+    _sl_col = partial_closed ? color.orange : color.red
+    _sl_val = partial_closed and not na(sl_after_entry) ? str.tostring(sl_after_entry, '#.#####') : not na(sl_price) ? str.tostring(sl_price, '#.#####') : '—'
+    table.cell(dash, 1, 5, _sl_val, bgcolor = color.black, text_color = _sl_col, text_size = size.tiny)
+
+    table.cell(dash, 0, 6, 'RR Ratio', bgcolor = color.black, text_color = color.white, text_size = size.tiny)
+    table.cell(dash, 1, 6, '2:1', bgcolor = color.black, text_color = color.orange, text_size = size.tiny)
