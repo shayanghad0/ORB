@@ -39,7 +39,7 @@ STATE_TRAIL      = "TRAIL"
 STATE_DONE       = "DONE"
 
 STATE_COLORS = {
-    STATE_IDLE:       "dim",
+    STATE_IDLE:       "grey50",
     STATE_BUILDING:   "cyan",
     STATE_WAIT_BREAK: "yellow",
     STATE_HALF_OPEN:  "green",
@@ -607,9 +607,9 @@ class ORBLiveBot:
         # Price
         price_line = Text()
         price_line.append("  Bid: ")
-        price_line.append(f"{bid:.5f}", style="green" if bid else "dim")
+        price_line.append(f"{bid:.5f}", style="green" if bid else "grey50")
         price_line.append("  Ask: ")
-        price_line.append(f"{ask:.5f}", style="red" if ask else "dim")
+        price_line.append(f"{ask:.5f}", style="red" if ask else "grey50")
 
         # ORB range
         if self.orb_high and self.orb_low:
