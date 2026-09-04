@@ -138,7 +138,7 @@ IDLE → BUILDING → WAIT_BREAK → HALF_OPEN → TRAIL → DONE
 |-----------|---------|-------------|
 | Range Start | 09:30 NY | Start of ORB range window |
 | Range End | 09:36 NY | End of ORB range window |
-| Trade Start | 09:30 NY | Start of trading window |
+| Trade Start | 09:36 NY | Start of trading window (range just locked) |
 | Trade End | 11:30 NY | End of trading window (force close) |
 | TP1 % | 0.25% | First take profit (close 50%) |
 | TP2 % | 0.50% | Second take profit (close rest) |

@@ -18,7 +18,7 @@ input int      InpRangeStartM  = 30;      // Range Start Minute (NY)
 input int      InpRangeEndH    = 9;       // Range End Hour (NY)
 input int      InpRangeEndM    = 36;      // Range End Minute (NY)
 input int      InpTradeStartH  = 9;       // Trade Start Hour (NY)
-input int      InpTradeStartM  = 30;      // Trade Start Minute (NY)
+input int      InpTradeStartM  = 36;      // Trade Start Minute (NY)
 input int      InpTradeEndH    = 11;      // Trade End Hour (NY)
 input int      InpTradeEndM    = 30;      // Trade End Minute (NY)
 

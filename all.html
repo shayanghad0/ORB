@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ORB Trade Log — All Days</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #0d1117; color: #c9d1d9; font-family: 'Segoe UI', system-ui, sans-serif; padding: 24px; }
+  h1 { color: #58a6ff; margin-bottom: 8px; font-size: 1.6em; }
+  .summary { display: flex; gap: 16px; margin: 16px 0 24px; flex-wrap: wrap; }
+  .summary .card {
+    background: #161b22; border: 1px solid #30363d; border-radius: 8px;
+    padding: 14px 20px; min-width: 130px;
+  }
+  .summary .card .label { color: #8b949e; font-size: 0.75em; text-transform: uppercase; letter-spacing: 0.5px; }
+  .summary .card .value { font-size: 1.4em; font-weight: 700; margin-top: 4px; }
+  .summary .card .value.green { color: #3fb950; }
+  .summary .card .value.red { color: #f85149; }
+  .summary .card .value.blue { color: #58a6ff; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.85em; }
+  th { background: #161b22; color: #8b949e; text-transform: uppercase; font-size: 0.7em;
+       letter-spacing: 0.5px; padding: 10px 12px; text-align: left; border-bottom: 2px solid #30363d;
+       position: sticky; top: 0; }
+  td { padding: 8px 12px; border-bottom: 1px solid #21262d; white-space: nowrap; }
+  tr:hover { background: #161b22; }
+  tr.entry { background: #1c2530; }
+  tr.win { background: #0d2818; }
+  tr.loss { background: #2d1215; }
+  .win { color: #3fb950; }
+  .loss { color: #f85149; }
+  .no-data { text-align: center; padding: 60px; color: #484f58; font-size: 1.1em; }
+  a { color: #58a6ff; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .nav { margin-bottom: 20px; color: #8b949e; font-size: 0.85em; }
+</style>
+</head>
+<body>
+<h1>ORB Trade Log — All Days</h1>
+<div class="nav"><a href="../index.html">All Days</a></div>
+<div class="summary">
+  <div class="card"><div class="label">Total Trades</div><div class="value blue">0</div></div>
+  <div class="card"><div class="label">Long</div><div class="value blue">0</div></div>
+  <div class="card"><div class="label">Short</div><div class="value blue">0</div></div>
+  <div class="card"><div class="label">Wins</div><div class="value green">0</div></div>
+  <div class="card"><div class="label">Losses</div><div class="value red">0</div></div>
+  <div class="card"><div class="label">Total PnL</div><div class="value green">$+0.00</div></div>
+</div>
+<table>
+<thead>
+<tr>
+  <th>Time</th><th>Type</th><th>Dir</th><th>Entry</th><th>TP1</th><th>TP2</th>
+  <th>SL</th><th>Vol</th><th>Close</th><th>ORB H</th><th>ORB L</th><th>PnL</th><th>Note</th>
+</tr>
+</thead>
+<tbody>
+<tr><td colspan="13" class="no-data">No trades recorded</td></tr>
+</tbody>
+</table>
+</body>
+</html>

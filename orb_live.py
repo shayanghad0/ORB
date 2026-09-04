@@ -12,7 +12,7 @@ NY_TZ = ZoneInfo("America/New_York")
 # ─────────────────────────────────────────────
 RANGE_START = datetime.time(9, 30)
 RANGE_END   = datetime.time(9, 36)
-TRADE_START = datetime.time(9, 30)
+TRADE_START = datetime.time(9, 36)
 TRADE_END   = datetime.time(11, 30)
 
 TP1_PCT = 0.0025   # 0.25% - first take profit
