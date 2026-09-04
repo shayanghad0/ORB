@@ -8,6 +8,7 @@ Python implementation of the ORB (Opening Range Breakout) trading strategy for X
 |------|-------------|
 | `orb_strategy.py` | Backtest engine — reads M1 JSON data, detects ORB trades, calculates margin/P&L, outputs HTML report with charts |
 | `orb_live.py` | Live trading bot — connects to MT5, builds ORB range in real-time, executes trades with partial TP + trailing SL |
+| `db.py` | Trade logging — persists every trade event to JSON, auto-generates HTML reports |
 | `indicator/v5.pine` | Original Pine Script indicator |
 
 ## Backtest (`orb_strategy.py`)
@@ -101,6 +102,49 @@ python orb_live.py
 ```
 IDLE → BUILDING → WAIT_BREAK → HALF_OPEN → TRAIL → (closed)
 ```
+
+## Trade Logging (`db.py`)
+
+Every trade event is automatically logged to JSON and HTML reports are generated.
+
+### File Structure
+
+```
+ORB/
+  all.json              ← master log of all trades
+  all.html              ← all trades report (HTML)
+  db/
+    2026-09-04/
+      db.json           ← today's trade log
+      index.html        ← today's HTML report
+    2026-09-05/
+      db.json
+      index.html
+    ...
+```
+
+### What Gets Logged
+
+| Event | Fields |
+|-------|--------|
+| `ENTRY_LONG` / `ENTRY_SHORT` | direction, entry, tp1, tp2, sl, volume, orb_high, orb_low |
+| `TP1_HIT` | direction, entry, close_price, volume, pnl |
+| `TP2_HIT` | direction, entry, close_price, volume, pnl |
+| `SL_HIT` | direction, entry, close_price, volume, pnl |
+| `FORCE_CLOSE` | direction, entry, close_price, volume, pnl (at 11:30 NY) |
+| `EMERGENCY_CLOSE` | direction, entry, close_price, volume, pnl (on Ctrl+C) |
+
+### HTML Reports
+
+- **Daily**: `db/{date}/index.html` — auto-generated after each event
+- **All Days**: `all.html` — regenerated after each event and exported on Ctrl+C
+- Dark theme, summary cards (Total, Long, Short, Wins, Losses, PnL), trade table with color-coded rows
+
+### Ctrl+C Behavior
+
+1. Emergency stop — closes all open positions
+2. Generates `all.html` from `all.json`
+3. Shuts down MT5
 
 ## Data Format
 

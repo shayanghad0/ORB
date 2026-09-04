@@ -21,6 +21,15 @@ Based on **New York Time (ET)** and the DST status as of **September 2026**:
 
 keep the timezone and when on time zone we are in this time trade 
 
+## Completed Features
+
+- [x] Live trading bot with MT5 (`orb_live.py`)
+- [x] Trade logging to JSON database (`db.py`)
+- [x] Daily HTML reports (`db/{date}/index.html`)
+- [x] All-trades HTML report (`all.html`)
+- [x] Auto-export on Ctrl+C
+- [x] Backtest engine (`orb_strategy.py`) 
+
 
 
 

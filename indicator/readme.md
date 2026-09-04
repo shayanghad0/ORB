@@ -1,13 +1,20 @@
 # ORB - Opening Range Breakout Indicator
 
-Pine Script v5 indicator for TradingView. Automatically detects the opening range and trades breakouts with partial close and trailing SL.
+Pine Script indicator for TradingView. Automatically detects the opening range and trades breakouts.
+
+## Versions
+
+| File | Version | Features |
+|------|---------|----------|
+| `v5.pine` | Pine Script v5 | Basic ORB — TP/SL only |
+| `v6.pine` | Pine Script v6 | Partial close + trailing SL |
 
 ## How It Works
 
 1. **Range Building** — Collects high/low during the opening range window (default 09:30–09:36)
 2. **Breakout Detection** — Signals LONG when price closes above range high, SHORT when below range low
 3. **Trade Management** — Sets TP and SL automatically
-4. **Partial Close** — Closes 50% of position when 50% of TP is reached, moves SL to breakeven + buffer
+4. **Partial Close** *(v6 only)* — Closes 50% of position when 50% of TP is reached, moves SL to breakeven + buffer
 
 ## Settings
 
@@ -19,8 +26,8 @@ Pine Script v5 indicator for TradingView. Automatically detects the opening rang
 | Trading Window | 0930–1130 | Window where breakout signals are valid |
 | TP % | 0.5% | Take profit target |
 | SL % | 0.25% | Stop loss distance |
-| Partial Close at % of TP | 50% | Close half position at this % of TP |
-| SL after partial close | 12.5% | Move SL to this % above/below entry after partial close |
+| Partial Close at % of TP | 50% | *(v6)* Close half position at this % of TP |
+| SL after partial close | 12.5% | *(v6)* Move SL to this % above/below entry after partial close |
 
 ### Display
 
@@ -43,7 +50,7 @@ Pine Script v5 indicator for TradingView. Automatically detects the opening rang
 | TP color | Lime |
 | SL color | Red |
 
-## Partial Close Logic
+## Partial Close Logic (v6)
 
 Example for a LONG trade:
 
@@ -54,7 +61,7 @@ Example for a LONG trade:
 When price reaches **1250** (50% of TP):
 
 - 50% of position is marked as closed
-- SL moves from 997.5 to **1125** (entry + 12.5%)
+- SL moves from 997.5 to **1012.5** (entry + 12.5%)
 - Orange label appears: "50% CLOSE"
 - Remaining position continues to full TP
 
@@ -67,7 +74,7 @@ Top-right corner table shows:
 - Current range values and bar count
 - Trade status (Building / Watching / LONG / SHORT / Done)
 - Entry price
-- TP and SL levels (updates when partial close triggers)
+- TP and SL levels (updates when partial close triggers in v6)
 - Risk/Reward ratio
 
 ## Reset
@@ -78,7 +85,7 @@ All state resets at the start of each new trading session. One trade per day max
 
 1. Open TradingView
 2. Go to Pine Script editor
-3. Paste the code from `v5.pine`
+3. Paste the code from `v5.pine` or `v6.pine`
 4. Click "Add to Chart"
 5. Adjust settings in the indicator settings panel
 
