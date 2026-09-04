@@ -3,6 +3,7 @@ import datetime
 import time
 import sys
 from zoneinfo import ZoneInfo
+import db
 
 NY_TZ = ZoneInfo("America/New_York")
 
@@ -204,6 +205,18 @@ class ORBLiveBot:
 
         self.send_order(mt5.ORDER_TYPE_BUY, self.lots)
 
+        db.log_event("ENTRY_LONG", {
+            "direction": "LONG",
+            "entry": f"{self.entry_price:.5f}",
+            "tp1": f"{self.tp1_price:.5f}",
+            "tp2": f"{self.tp2_price:.5f}",
+            "sl": f"{self.sl_price:.5f}",
+            "volume": self.lots,
+            "orb_high": f"{self.orb_high:.5f}" if self.orb_high else "",
+            "orb_low": f"{self.orb_low:.5f}" if self.orb_low else "",
+            "comment": "OR open",
+        })
+
     def enter_short(self, price):
         self.trade_long = False
         self.entry_price = price
@@ -219,6 +232,18 @@ class ORBLiveBot:
         self.log(f"  TP1: {self.tp1_price:.5f} (-0.25%)  TP2: {self.tp2_price:.5f} (-0.50%)  SL: {self.sl_price:.5f} (+0.25%)")
 
         self.send_order(mt5.ORDER_TYPE_SELL, self.lots)
+
+        db.log_event("ENTRY_SHORT", {
+            "direction": "SHORT",
+            "entry": f"{self.entry_price:.5f}",
+            "tp1": f"{self.tp1_price:.5f}",
+            "tp2": f"{self.tp2_price:.5f}",
+            "sl": f"{self.sl_price:.5f}",
+            "volume": self.lots,
+            "orb_high": f"{self.orb_high:.5f}" if self.orb_high else "",
+            "orb_low": f"{self.orb_low:.5f}" if self.orb_low else "",
+            "comment": "OR open",
+        })
 
     # ─────────────────────────────────────────
     # SEND ORDER TO MT5
@@ -375,6 +400,14 @@ class ORBLiveBot:
                     self.modify_sl(self.entry_price)
                     self.state = STATE_TRAIL
                     self.log("SL moved to break-even (entry price)")
+                    db.log_event("TP1_HIT", {
+                        "direction": "LONG",
+                        "entry": f"{self.entry_price:.5f}",
+                        "close_price": f"{tick['ask']:.5f}",
+                        "volume": half_vol,
+                        "pnl": round((tick['ask'] - self.entry_price) * half_vol * CONTRACT_SIZE, 2),
+                        "comment": "TP1 — close 50%, SL to BE",
+                    })
 
             elif not self.trade_long and tick['bid'] <= self.tp1_price:
                 self.tp1_hit = True
@@ -384,6 +417,14 @@ class ORBLiveBot:
                     self.modify_sl(self.entry_price)
                     self.state = STATE_TRAIL
                     self.log("SL moved to break-even (entry price)")
+                    db.log_event("TP1_HIT", {
+                        "direction": "SHORT",
+                        "entry": f"{self.entry_price:.5f}",
+                        "close_price": f"{tick['bid']:.5f}",
+                        "volume": half_vol,
+                        "pnl": round((self.entry_price - tick['bid']) * half_vol * CONTRACT_SIZE, 2),
+                        "comment": "TP1 — close 50%, SL to BE",
+                    })
 
         # Check TP2: close remaining
         if self.tp1_hit and not self.tp2_hit:
@@ -394,6 +435,14 @@ class ORBLiveBot:
                 self.day_done = True
                 self.state = STATE_DONE
                 self.log("ALL POSITIONS CLOSED — Day done")
+                db.log_event("TP2_HIT", {
+                    "direction": "LONG",
+                    "entry": f"{self.entry_price:.5f}",
+                    "close_price": f"{tick['ask']:.5f}",
+                    "volume": self.current_volume,
+                    "pnl": round((tick['ask'] - self.entry_price) * self.current_volume * CONTRACT_SIZE, 2),
+                    "comment": "TP2 — full close",
+                })
 
             elif not self.trade_long and tick['bid'] <= self.tp2_price:
                 self.tp2_hit = True
@@ -402,6 +451,14 @@ class ORBLiveBot:
                 self.day_done = True
                 self.state = STATE_DONE
                 self.log("ALL POSITIONS CLOSED — Day done")
+                db.log_event("TP2_HIT", {
+                    "direction": "SHORT",
+                    "entry": f"{self.entry_price:.5f}",
+                    "close_price": f"{tick['bid']:.5f}",
+                    "volume": self.current_volume,
+                    "pnl": round((self.entry_price - tick['bid']) * self.current_volume * CONTRACT_SIZE, 2),
+                    "comment": "TP2 — full close",
+                })
 
         # Check SL
         if self.trade_long and tick['bid'] <= self.sl_price:
@@ -410,6 +467,14 @@ class ORBLiveBot:
             self.day_done = True
             self.state = STATE_DONE
             self.log("STOPPED OUT — Day done")
+            db.log_event("SL_HIT", {
+                "direction": "LONG",
+                "entry": f"{self.entry_price:.5f}",
+                "close_price": f"{tick['bid']:.5f}",
+                "volume": self.current_volume,
+                "pnl": round((tick['bid'] - self.entry_price) * self.current_volume * CONTRACT_SIZE, 2),
+                "comment": "SL hit",
+            })
 
         elif not self.trade_long and tick['ask'] >= self.sl_price:
             self.log(f"SL HIT @ {tick['ask']:.5f}")
@@ -417,6 +482,14 @@ class ORBLiveBot:
             self.day_done = True
             self.state = STATE_DONE
             self.log("STOPPED OUT — Day done")
+            db.log_event("SL_HIT", {
+                "direction": "SHORT",
+                "entry": f"{self.entry_price:.5f}",
+                "close_price": f"{tick['ask']:.5f}",
+                "volume": self.current_volume,
+                "pnl": round((self.entry_price - tick['ask']) * self.current_volume * CONTRACT_SIZE, 2),
+                "comment": "SL hit",
+            })
 
     # ─────────────────────────────────────────
     # FORCE CLOSE AT 11:30
@@ -425,10 +498,21 @@ class ORBLiveBot:
         now = self.get_current_time_ny().time()
         if now >= TRADE_END and self.state in (STATE_HALF_OPEN, STATE_TRAIL):
             self.log("11:30 NY — FORCE CLOSE")
+            close_price = self.get_tick()
+            cp = close_price['bid'] if self.trade_long else close_price['ask'] if close_price else self.entry_price
+            pnl_dir = (cp - self.entry_price) if self.trade_long else (self.entry_price - cp)
             self.close_position()
             self.day_done = True
             self.state = STATE_DONE
             self.log("Day done — force closed")
+            db.log_event("FORCE_CLOSE", {
+                "direction": "LONG" if self.trade_long else "SHORT",
+                "entry": f"{self.entry_price:.5f}",
+                "close_price": f"{cp:.5f}",
+                "volume": self.current_volume,
+                "pnl": round(pnl_dir * self.current_volume * CONTRACT_SIZE, 2),
+                "comment": "11:30 NY force close",
+            })
 
     # ─────────────────────────────────────────
     # EMERGENCY STOP
@@ -458,6 +542,17 @@ class ORBLiveBot:
                 result = mt5.order_send(request)
                 if result and result.retcode == mt5.TRADE_RETCODE_DONE:
                     self.log(f"Emergency closed {pos.volume} lots @ {result.price:.5f}")
+                    direction = "LONG" if pos.type == mt5.ORDER_TYPE_BUY else "SHORT"
+                    entry_val = self.entry_price if self.entry_price else 0
+                    pnl_dir = (result.price - entry_val) if pos.type == mt5.ORDER_TYPE_BUY else (entry_val - result.price)
+                    db.log_event("EMERGENCY_CLOSE", {
+                        "direction": direction,
+                        "entry": f"{entry_val:.5f}",
+                        "close_price": f"{result.price:.5f}",
+                        "volume": pos.volume,
+                        "pnl": round(pnl_dir * pos.volume * CONTRACT_SIZE, 2),
+                        "comment": "Emergency Ctrl+C close",
+                    })
                 else:
                     self.log(f"Emergency close FAILED for ticket {pos.ticket}")
         else:
@@ -624,6 +719,8 @@ def main():
         bot.emergency_stop()
         bot.print_status()
     finally:
+        db.generate_all_html()
+        print("Exported all.html")
         mt5.shutdown()
         print("MT5 shutdown complete.")
 
