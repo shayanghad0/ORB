@@ -2,7 +2,7 @@
 // © shayanghad0 (modified for time‑based ORB with fixed range window)
 
 //@version=6
-indicator('ORB - Opening Range Breakout (Time-based)', overlay = true, max_labels_count = 500, max_lines_count = 500)
+indicator('ORB - Opening Range Breakout (Time-based : America/New_York)', overlay = true, max_labels_count = 500, max_lines_count = 500)
 
 // ─────────────────────────────────────────────
 // INPUTS — Strategy

@@ -3,7 +3,7 @@
 // Modified: added timezone input (default Europe/London)
 
 //@version=6
-indicator('ORB - Opening Range Breakout (Time-based)', overlay = true, max_labels_count = 500, max_lines_count = 500)
+indicator('ORB - Opening Range Breakout (Time-based : Europe/London)', overlay = true, max_labels_count = 500, max_lines_count = 500)
 
 // ─────────────────────────────────────────────
 // INPUTS — Strategy

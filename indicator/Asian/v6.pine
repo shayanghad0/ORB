@@ -3,7 +3,7 @@
 // Modified: added Asian timezones & default Tokyo session
 
 //@version=6
-indicator('ORB - Opening Range Breakout (Time-based)', overlay = true, max_labels_count = 500, max_lines_count = 500)
+indicator('ORB - Opening Range Breakout (Time-based : Asia/Tokyo)', overlay = true, max_labels_count = 500, max_lines_count = 500)
 
 // ─────────────────────────────────────────────
 // INPUTS — Strategy
