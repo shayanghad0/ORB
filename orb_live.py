@@ -3,9 +3,16 @@ import datetime
 import time
 import sys
 from zoneinfo import ZoneInfo
+from rich.console import Console
+from rich.panel import Panel
+from rich.table import Table
+from rich.layout import Layout
+from rich.live import Live
+from rich.text import Text
 import db
 
 NY_TZ = ZoneInfo("America/New_York")
+console = Console()
 
 # ─────────────────────────────────────────────
 # STRATEGY PARAMETERS (matching indicator & backtest)
@@ -30,6 +37,24 @@ STATE_WAIT_BREAK = "WAIT_BREAK"
 STATE_HALF_OPEN  = "HALF_OPEN"
 STATE_TRAIL      = "TRAIL"
 STATE_DONE       = "DONE"
+
+STATE_COLORS = {
+    STATE_IDLE:       "dim",
+    STATE_BUILDING:   "cyan",
+    STATE_WAIT_BREAK: "yellow",
+    STATE_HALF_OPEN:  "green",
+    STATE_TRAIL:      "bright_green",
+    STATE_DONE:       "red",
+}
+
+STATE_LABELS = {
+    STATE_IDLE:       "IDLE — waiting for range window",
+    STATE_BUILDING:   "BUILDING — collecting ORB range",
+    STATE_WAIT_BREAK: "WAITING — watching for breakout",
+    STATE_HALF_OPEN:  "ACTIVE — TP1 pending",
+    STATE_TRAIL:      "TRAILING — SL at break-even, TP2 pending",
+    STATE_DONE:       "DONE — day finished",
+}
 
 
 class ORBLiveBot:
@@ -67,7 +92,7 @@ class ORBLiveBot:
     def log(self, msg):
         now_ny = datetime.datetime.now(NY_TZ)
         ts = now_ny.strftime("%H:%M:%S.%f")[:-3]
-        print(f"[{ts}] {msg}")
+        console.print(f"[dim]{ts}[/dim] {msg}")
 
     def get_current_time_ny(self):
         return datetime.datetime.now(NY_TZ)
@@ -138,7 +163,7 @@ class ORBLiveBot:
         self.tp2_hit = False
         self.day_done = False
         self.last_bar_time = None
-        self.log("Day reset — waiting for new session")
+        self.log("[yellow]Day reset — waiting for new session[/yellow]")
 
     # ─────────────────────────────────────────
     # ORB RANGE BUILDING
@@ -153,7 +178,7 @@ class ORBLiveBot:
                 self.orb_low = bar['low']
                 self.range_building = True
                 self.state = STATE_BUILDING
-                self.log(f"Range started — High: {self.orb_high:.5f}  Low: {self.orb_low:.5f}")
+                self.log(f"[cyan]Range started — High: {self.orb_high:.5f}  Low: {self.orb_low:.5f}[/cyan]")
             else:
                 self.orb_high = max(self.orb_high, bar['high'])
                 self.orb_low = min(self.orb_low, bar['low'])
@@ -162,8 +187,8 @@ class ORBLiveBot:
             self.range_locked = True
             self.range_building = False
             self.state = STATE_WAIT_BREAK
-            self.log(f"Range LOCKED — High: {self.orb_high:.5f}  Low: {self.orb_low:.5f}")
-            self.log("Waiting for breakout...")
+            self.log(f"[yellow]Range LOCKED — High: {self.orb_high:.5f}  Low: {self.orb_low:.5f}[/yellow]")
+            self.log("[yellow]Waiting for breakout...[/yellow]")
 
     # ─────────────────────────────────────────
     # BREAKOUT DETECTION
@@ -200,8 +225,8 @@ class ORBLiveBot:
         self.tp1_hit = False
         self.tp2_hit = False
 
-        self.log(f"LONG ENTRY @ {self.entry_price:.5f}")
-        self.log(f"  TP1: {self.tp1_price:.5f} (+0.25%)  TP2: {self.tp2_price:.5f} (+0.50%)  SL: {self.sl_price:.5f} (-0.25%)")
+        self.log(f"[green]LONG ENTRY @ {self.entry_price:.5f}[/green]")
+        self.log(f"  TP1: {self.tp1_price:.5f}  TP2: {self.tp2_price:.5f}  SL: {self.sl_price:.5f}")
 
         self.send_order(mt5.ORDER_TYPE_BUY, self.lots)
 
@@ -228,8 +253,8 @@ class ORBLiveBot:
         self.tp1_hit = False
         self.tp2_hit = False
 
-        self.log(f"SHORT ENTRY @ {self.entry_price:.5f}")
-        self.log(f"  TP1: {self.tp1_price:.5f} (-0.25%)  TP2: {self.tp2_price:.5f} (-0.50%)  SL: {self.sl_price:.5f} (+0.25%)")
+        self.log(f"[red]SHORT ENTRY @ {self.entry_price:.5f}[/red]")
+        self.log(f"  TP1: {self.tp1_price:.5f}  TP2: {self.tp2_price:.5f}  SL: {self.sl_price:.5f}")
 
         self.send_order(mt5.ORDER_TYPE_SELL, self.lots)
 
@@ -251,7 +276,7 @@ class ORBLiveBot:
     def send_order(self, order_type, volume):
         symbol_info = mt5.symbol_info(self.symbol)
         if symbol_info is None:
-            self.log(f"ERROR: Cannot get symbol info for {self.symbol}")
+            self.log(f"[red]ERROR: Cannot get symbol info for {self.symbol}[/red]")
             return False
 
         if not symbol_info.visible:
@@ -274,15 +299,15 @@ class ORBLiveBot:
 
         result = mt5.order_send(request)
         if result is None:
-            self.log(f"ERROR: order_send returned None — {mt5.last_error()}")
+            self.log(f"[red]ERROR: order_send returned None — {mt5.last_error()}[/red]")
             return False
 
         if result.retcode != mt5.TRADE_RETCODE_DONE:
-            self.log(f"ERROR: Order failed — {result.comment} (code {result.retcode})")
+            self.log(f"[red]ERROR: Order failed — {result.comment} (code {result.retcode})[/red]")
             return False
 
         self.ticket = result.order
-        self.log(f"Order FILLED — Ticket: {self.ticket}  Volume: {volume}  Price: {result.price:.5f}")
+        self.log(f"[green]Order FILLED — Ticket: {self.ticket}  Volume: {volume}  Price: {result.price:.5f}[/green]")
         self.state = STATE_HALF_OPEN
         return True
 
@@ -291,12 +316,12 @@ class ORBLiveBot:
     # ─────────────────────────────────────────
     def close_position(self, volume=None):
         if self.ticket is None:
-            self.log("ERROR: No ticket to close")
+            self.log("[red]ERROR: No ticket to close[/red]")
             return False
 
         positions = mt5.positions_get(ticket=self.ticket)
         if positions is None or len(positions) == 0:
-            self.log(f"WARNING: Position {self.ticket} not found — may already be closed")
+            self.log(f"[yellow]WARNING: Position {self.ticket} not found — may already be closed[/yellow]")
             self.ticket = None
             self.day_done = True
             self.state = STATE_DONE
@@ -307,12 +332,12 @@ class ORBLiveBot:
         close_vol = round(close_vol, 2)
 
         if close_vol <= 0:
-            self.log("WARNING: Volume to close is 0")
+            self.log("[yellow]WARNING: Volume to close is 0[/yellow]")
             return False
 
         symbol_info = mt5.symbol_info(self.symbol)
         if symbol_info is None:
-            self.log(f"ERROR: Cannot get symbol info for {self.symbol}")
+            self.log(f"[red]ERROR: Cannot get symbol info for {self.symbol}[/red]")
             return False
 
         # Opposite type to close
@@ -339,11 +364,11 @@ class ORBLiveBot:
         result = mt5.order_send(request)
         if result is None or result.retcode != mt5.TRADE_RETCODE_DONE:
             err = result.comment if result else str(mt5.last_error())
-            self.log(f"ERROR: Close failed — {err}")
+            self.log(f"[red]ERROR: Close failed — {err}[/red]")
             return False
 
         self.current_volume = round(self.current_volume - close_vol, 2)
-        self.log(f"CLOSED {close_vol} lots @ {result.price:.5f}  Remaining: {self.current_volume}")
+        self.log(f"[bright_blue]CLOSED {close_vol} lots @ {result.price:.5f}  Remaining: {self.current_volume}[/bright_blue]")
         return True
 
     # ─────────────────────────────────────────
@@ -370,11 +395,11 @@ class ORBLiveBot:
         result = mt5.order_send(request)
         if result is None or result.retcode != mt5.TRADE_RETCODE_DONE:
             err = result.comment if result else str(mt5.last_error())
-            self.log(f"ERROR: SL modify failed — {err}")
+            self.log(f"[red]ERROR: SL modify failed — {err}[/red]")
             return False
 
         self.sl_price = new_sl
-        self.log(f"SL MOVED to {new_sl:.5f}")
+        self.log(f"[bright_cyan]SL MOVED to {new_sl:.5f}[/bright_cyan]")
         return True
 
     # ─────────────────────────────────────────
@@ -394,12 +419,12 @@ class ORBLiveBot:
         if not self.tp1_hit:
             if self.trade_long and tick['ask'] >= self.tp1_price:
                 self.tp1_hit = True
-                self.log(f"TP1 HIT @ {tick['ask']:.5f}")
+                self.log(f"[green]TP1 HIT @ {tick['ask']:.5f}[/green]")
                 half_vol = round(self.initial_volume / 2, 2)
                 if self.close_position(half_vol):
                     self.modify_sl(self.entry_price)
                     self.state = STATE_TRAIL
-                    self.log("SL moved to break-even (entry price)")
+                    self.log("[green]SL moved to break-even (entry price)[/green]")
                     db.log_event("TP1_HIT", {
                         "direction": "LONG",
                         "entry": f"{self.entry_price:.5f}",
@@ -411,12 +436,12 @@ class ORBLiveBot:
 
             elif not self.trade_long and tick['bid'] <= self.tp1_price:
                 self.tp1_hit = True
-                self.log(f"TP1 HIT @ {tick['bid']:.5f}")
+                self.log(f"[green]TP1 HIT @ {tick['bid']:.5f}[/green]")
                 half_vol = round(self.initial_volume / 2, 2)
                 if self.close_position(half_vol):
                     self.modify_sl(self.entry_price)
                     self.state = STATE_TRAIL
-                    self.log("SL moved to break-even (entry price)")
+                    self.log("[green]SL moved to break-even (entry price)[/green]")
                     db.log_event("TP1_HIT", {
                         "direction": "SHORT",
                         "entry": f"{self.entry_price:.5f}",
@@ -430,11 +455,11 @@ class ORBLiveBot:
         if self.tp1_hit and not self.tp2_hit:
             if self.trade_long and tick['ask'] >= self.tp2_price:
                 self.tp2_hit = True
-                self.log(f"TP2 HIT @ {tick['ask']:.5f}")
+                self.log(f"[bright_green]TP2 HIT @ {tick['ask']:.5f}[/bright_green]")
                 self.close_position()
                 self.day_done = True
                 self.state = STATE_DONE
-                self.log("ALL POSITIONS CLOSED — Day done")
+                self.log("[bright_green]ALL POSITIONS CLOSED — Day done[/bright_green]")
                 db.log_event("TP2_HIT", {
                     "direction": "LONG",
                     "entry": f"{self.entry_price:.5f}",
@@ -446,11 +471,11 @@ class ORBLiveBot:
 
             elif not self.trade_long and tick['bid'] <= self.tp2_price:
                 self.tp2_hit = True
-                self.log(f"TP2 HIT @ {tick['bid']:.5f}")
+                self.log(f"[bright_green]TP2 HIT @ {tick['bid']:.5f}[/bright_green]")
                 self.close_position()
                 self.day_done = True
                 self.state = STATE_DONE
-                self.log("ALL POSITIONS CLOSED — Day done")
+                self.log("[bright_green]ALL POSITIONS CLOSED — Day done[/bright_green]")
                 db.log_event("TP2_HIT", {
                     "direction": "SHORT",
                     "entry": f"{self.entry_price:.5f}",
@@ -462,11 +487,11 @@ class ORBLiveBot:
 
         # Check SL
         if self.trade_long and tick['bid'] <= self.sl_price:
-            self.log(f"SL HIT @ {tick['bid']:.5f}")
+            self.log(f"[red]SL HIT @ {tick['bid']:.5f}[/red]")
             self.close_position()
             self.day_done = True
             self.state = STATE_DONE
-            self.log("STOPPED OUT — Day done")
+            self.log("[red]STOPPED OUT — Day done[/red]")
             db.log_event("SL_HIT", {
                 "direction": "LONG",
                 "entry": f"{self.entry_price:.5f}",
@@ -477,11 +502,11 @@ class ORBLiveBot:
             })
 
         elif not self.trade_long and tick['ask'] >= self.sl_price:
-            self.log(f"SL HIT @ {tick['ask']:.5f}")
+            self.log(f"[red]SL HIT @ {tick['ask']:.5f}[/red]")
             self.close_position()
             self.day_done = True
             self.state = STATE_DONE
-            self.log("STOPPED OUT — Day done")
+            self.log("[red]STOPPED OUT — Day done[/red]")
             db.log_event("SL_HIT", {
                 "direction": "SHORT",
                 "entry": f"{self.entry_price:.5f}",
@@ -497,14 +522,14 @@ class ORBLiveBot:
     def check_force_close(self):
         now = self.get_current_time_ny().time()
         if now >= TRADE_END and self.state in (STATE_HALF_OPEN, STATE_TRAIL):
-            self.log("11:30 NY — FORCE CLOSE")
+            self.log("[red]11:30 NY — FORCE CLOSE[/red]")
             close_price = self.get_tick()
             cp = close_price['bid'] if self.trade_long else close_price['ask'] if close_price else self.entry_price
             pnl_dir = (cp - self.entry_price) if self.trade_long else (self.entry_price - cp)
             self.close_position()
             self.day_done = True
             self.state = STATE_DONE
-            self.log("Day done — force closed")
+            self.log("[red]Day done — force closed[/red]")
             db.log_event("FORCE_CLOSE", {
                 "direction": "LONG" if self.trade_long else "SHORT",
                 "entry": f"{self.entry_price:.5f}",
@@ -518,7 +543,7 @@ class ORBLiveBot:
     # EMERGENCY STOP
     # ─────────────────────────────────────────
     def emergency_stop(self):
-        self.log("EMERGENCY STOP — Closing all positions...")
+        self.log("[red bold]EMERGENCY STOP — Closing all positions...[/red bold]")
         positions = mt5.positions_get(symbol=self.symbol)
         if positions:
             for pos in positions:
@@ -541,7 +566,7 @@ class ORBLiveBot:
                 }
                 result = mt5.order_send(request)
                 if result and result.retcode == mt5.TRADE_RETCODE_DONE:
-                    self.log(f"Emergency closed {pos.volume} lots @ {result.price:.5f}")
+                    self.log(f"[green]Emergency closed {pos.volume} lots @ {result.price:.5f}[/green]")
                     direction = "LONG" if pos.type == mt5.ORDER_TYPE_BUY else "SHORT"
                     entry_val = self.entry_price if self.entry_price else 0
                     pnl_dir = (result.price - entry_val) if pos.type == mt5.ORDER_TYPE_BUY else (entry_val - result.price)
@@ -554,75 +579,153 @@ class ORBLiveBot:
                         "comment": "Emergency Ctrl+C close",
                     })
                 else:
-                    self.log(f"Emergency close FAILED for ticket {pos.ticket}")
+                    self.log(f"[red]Emergency close FAILED for ticket {pos.ticket}[/red]")
         else:
-            self.log("No open positions to close")
+            self.log("[yellow]No open positions to close[/yellow]")
 
     # ─────────────────────────────────────────
-    # STATUS DISPLAY
+    # RICH PANEL DISPLAY
     # ─────────────────────────────────────────
-    def print_status(self):
+    def build_panel(self) -> Panel:
         now = self.get_current_time_ny()
         price = self.get_tick()
         bid = price['bid'] if price else 0
         ask = price['ask'] if price else 0
 
-        status = {
-            STATE_IDLE: "IDLE — waiting for range window",
-            STATE_BUILDING: "BUILDING — collecting ORB range",
-            STATE_WAIT_BREAK: "WAITING — range locked, watching for breakout",
-            STATE_HALF_OPEN: "ACTIVE — TP1 pending (close 50% + move SL)",
-            STATE_TRAIL: "TRAILING — TP1 hit, SL at break-even, TP2 pending",
-            STATE_DONE: "DONE — day finished",
-        }
+        # Header
+        header = Text()
+        header.append(f" {self.symbol}  ", style="bold white on blue")
+        header.append(f"  {now.strftime('%Y-%m-%d %H:%M:%S')} NY", style="bold")
 
-        print(f"\n{'='*60}")
-        print(f"  {self.symbol}  |  {now.strftime('%Y-%m-%d %H:%M:%S')} NY")
-        print(f"  State: {status.get(self.state, self.state)}")
-        print(f"  Bid: {bid:.5f}  Ask: {ask:.5f}")
+        # State badge
+        state_color = STATE_COLORS.get(self.state, "white")
+        state_label = STATE_LABELS.get(self.state, self.state)
+        state_line = Text()
+        state_line.append("  State:  ")
+        state_line.append(f" {state_label} ", style=f"bold {state_color} on {state_color} reverse")
 
+        # Price
+        price_line = Text()
+        price_line.append("  Bid: ")
+        price_line.append(f"{bid:.5f}", style="green" if bid else "dim")
+        price_line.append("  Ask: ")
+        price_line.append(f"{ask:.5f}", style="red" if ask else "dim")
+
+        # ORB range
         if self.orb_high and self.orb_low:
-            print(f"  ORB: {self.orb_high:.5f} / {self.orb_low:.5f}")
+            orb_line = Text()
+            orb_line.append("  ORB:  ")
+            orb_line.append(f"{self.orb_high:.5f}", style="cyan")
+            orb_line.append(" / ")
+            orb_line.append(f"{self.orb_low:.5f}", style="red")
+            spread = self.orb_high - self.orb_low
+            orb_line.append(f"  ({spread:.5f})", style="dim")
         else:
-            print(f"  ORB: Building...")
+            orb_line = Text("  ORB:  Building...", style="dim")
 
+        # Build layout
+        lines = [header, state_line, price_line, orb_line]
+
+        # Position info
         if self.state in (STATE_HALF_OPEN, STATE_TRAIL):
             direction = "LONG" if self.trade_long else "SHORT"
-            print(f"  Position: {direction}  Entry: {self.entry_price:.5f}")
-            print(f"  Volume: {self.current_volume} / {self.initial_volume}")
-            print(f"  TP1: {self.tp1_price:.5f} ({'HIT' if self.tp1_hit else 'pending'})")
-            print(f"  TP2: {self.tp2_price:.5f} ({'HIT' if self.tp2_hit else 'pending'})")
-            print(f"  SL:  {self.sl_price:.5f}")
-        print(f"{'='*60}")
+            dir_color = "green" if self.trade_long else "red"
+
+            lines.append(Text(""))
+
+            pos_line = Text()
+            pos_line.append("  Pos:   ")
+            pos_line.append(f"{direction}", style=f"bold {dir_color}")
+            pos_line.append("  Entry: ")
+            pos_line.append(f"{self.entry_price:.5f}", style="yellow")
+
+            vol_line = Text()
+            vol_line.append("  Vol:   ")
+            vol_line.append(f"{self.current_volume:.2f}", style="white")
+            vol_line.append(f" / {self.initial_volume:.2f}", style="dim")
+
+            tp1_status = "[green]HIT[/green]" if self.tp1_hit else "[dim]pending[/dim]"
+            tp2_status = "[green]HIT[/green]" if self.tp2_hit else "[dim]pending[/dim]"
+
+            tp1_line = Text()
+            tp1_line.append("  TP1:  ")
+            tp1_line.append(f"{self.tp1_price:.5f}", style="green")
+            tp1_line.append(f"  ({tp1_status})", style="dim" if not self.tp1_hit else "green")
+
+            tp2_line = Text()
+            tp2_line.append("  TP2:  ")
+            tp2_line.append(f"{self.tp2_price:.5f}", style="green")
+            tp2_line.append(f"  ({tp2_status})", style="dim" if not self.tp2_hit else "green")
+
+            sl_line = Text()
+            sl_line.append("  SL:   ")
+            sl_line.append(f"{self.sl_price:.5f}", style="red")
+
+            lines.extend([pos_line, vol_line, tp1_line, tp2_line, sl_line])
+
+        # Footer
+        lines.append(Text(""))
+        footer = Text("  Ctrl+C to emergency stop", style="dim italic")
+        lines.append(footer)
+
+        # Compose panel content
+        content = Text("\n").join(lines)
+
+        # Panel title
+        state_color = STATE_COLORS.get(self.state, "white")
+        title = Text(f" ORB BOT ", style=f"bold white on {state_color}")
+        border_color = state_color
+
+        return Panel(
+            content,
+            title=title,
+            border_style=border_color,
+            padding=(0, 1),
+        )
 
 
 def main():
-    print("+----------------------------------------------+")
-    print("|     ORB LIVE TRADING BOT — MetaTrader 5      |")
-    print("|  Opening Range Breakout · New York Session   |")
-    print("+----------------------------------------------+")
+    # Startup banner
+    banner = Panel(
+        Text(
+            "  ORB LIVE TRADING BOT — MetaTrader 5\n"
+            "  Opening Range Breakout · New York Session\n"
+            "  Range: 09:30–09:36  Trade: 09:36–11:30\n"
+            "  TP1: +0.25%  TP2: +0.50%  SL: -0.25%",
+            justify="center"
+        ),
+        title="[bold blue]ORB BOT[/bold blue]",
+        border_style="blue",
+        padding=(1, 2),
+    )
+    console.print(banner)
+    console.print()
 
     if not mt5.initialize():
-        print(f"MT5 initialization failed: {mt5.last_error()}")
+        console.print(f"[red]MT5 initialization failed: {mt5.last_error()}[/red]")
         sys.exit(1)
 
-    print("MT5 initialized successfully.\n")
+    console.print("[green]MT5 initialized successfully.[/green]\n")
 
     account_info = mt5.account_info()
     if account_info:
-        print(f"  Account: {account_info.login}")
-        print(f"  Server:  {account_info.server}")
-        print(f"  Balance: ${account_info.balance:,.2f}")
-        print(f"  Free:    ${account_info.margin_free:,.2f}")
-        print()
+        acct_table = Table(show_header=False, box=None, padding=(0, 2))
+        acct_table.add_column("Key", style="dim")
+        acct_table.add_column("Value", style="bold")
+        acct_table.add_row("Account", str(account_info.login))
+        acct_table.add_row("Server", account_info.server)
+        acct_table.add_row("Balance", f"${account_info.balance:,.2f}")
+        acct_table.add_row("Free", f"${account_info.margin_free:,.2f}")
+        console.print(acct_table)
+        console.print()
 
     symbol = input("Enter symbol (e.g. XAUUSD): ").strip().upper()
     symbol_info = mt5.symbol_info(symbol)
     if symbol_info is None:
-        print(f"Symbol '{symbol}' not found. Available symbols:")
+        console.print(f"[red]Symbol '{symbol}' not found. Available symbols:[/red]")
         symbols = mt5.symbols_get()
         for s in symbols[:20]:
-            print(f"  {s.name}")
+            console.print(f"  {s.name}")
         mt5.shutdown()
         sys.exit(1)
 
@@ -631,13 +734,17 @@ def main():
     lots_str = input("Enter lot size (e.g. 0.02): ").strip()
     lots = float(lots_str)
 
-    print(f"\n  Symbol: {symbol}  |  Lots: {lots}")
-    print(f"  Range:  {RANGE_START} — {RANGE_END} NY")
-    print(f"  Trade:  {TRADE_START} — {TRADE_END} NY")
-    print(f"  TP1: +0.25% (close 50%, SL → entry)")
-    print(f"  TP2: +0.50% (close rest)")
-    print(f"  SL:  -0.25% (close all)")
-    print(f"\n  Press Ctrl+C to emergency stop\n")
+    console.print()
+    console.print(Panel(
+        f"  Symbol: [bold]{symbol}[/bold]  |  Lots: [bold]{lots}[/bold]\n"
+        f"  Range:  {RANGE_START} — {RANGE_END} NY\n"
+        f"  Trade:  {TRADE_START} — {TRADE_END} NY\n"
+        f"  TP1: +0.25%  TP2: +0.50%  SL: -0.25%",
+        title="[bold]Config[/bold]",
+        border_style="cyan",
+        padding=(0, 1),
+    ))
+    console.print()
 
     bot = ORBLiveBot(symbol, lots)
 
@@ -652,8 +759,7 @@ def main():
     rates = mt5.copy_rates_range(symbol, mt5.TIMEFRAME_M1, today_start_utc, now_ny.astimezone(datetime.timezone.utc))
 
     if rates is not None and len(rates) > 0:
-        print(f"  Found {len(rates)} existing M1 bars for today")
-        # Process existing bars to build range if applicable
+        console.print(f"  Found {len(rates)} existing M1 bars for today")
         for r in rates:
             bar = {
                 'time': datetime.datetime.fromtimestamp(r[0], tz=NY_TZ),
@@ -666,63 +772,59 @@ def main():
             bot.last_bar_time = bar['time']
 
         if bot.range_locked:
-            print(f"  ORB range already built: {bot.orb_high:.5f} / {bot.orb_low:.5f}")
+            console.print(f"  ORB range already built: {bot.orb_high:.5f} / {bot.orb_low:.5f}")
 
-    print("\nBot is running. Monitoring ticks...\n")
-
-    status_counter = 0
+    console.print("\n[bold green]Bot is running. Monitoring ticks...[/bold green]\n")
 
     try:
-        while True:
-            now_ny = bot.get_current_time_ny()
+        with Live(bot.build_panel(), console=console, refresh_per_second=4, screen=True) as live:
+            while True:
+                now_ny = bot.get_current_time_ny()
 
-            # Check for new day
-            bot.check_new_day()
+                # Check for new day
+                bot.check_new_day()
 
-            # Force close at 11:30
-            bot.check_force_close()
+                # Force close at 11:30
+                bot.check_force_close()
 
-            # Get current tick (real-time, millisecond updates)
-            tick = bot.get_tick()
-            if tick is None:
+                # Get current tick (real-time, millisecond updates)
+                tick = bot.get_tick()
+                if tick is None:
+                    time.sleep(0.1)
+                    continue
+
+                # Check if new M1 bar arrived
+                curr_bar = bot.get_bar_m1()
+                if curr_bar is not None:
+                    if bot.last_bar_time is None or curr_bar['time'] != bot.last_bar_time:
+                        bot.last_bar_time = curr_bar['time']
+
+                        # Update ORB range with new bar
+                        bot.update_orb_range(curr_bar)
+
+                        # Check breakout on new bar
+                        prev_bar, curr_bar = bot.get_last_two_bars()
+                        if prev_bar and curr_bar:
+                            bot.check_breakout(prev_bar, curr_bar)
+
+                # Manage active trade on every tick (millisecond updates)
+                bot.manage_trade(tick)
+
+                # Update panel in-place
+                live.update(bot.build_panel())
+
+                # Sleep 100ms for tick updates
                 time.sleep(0.1)
-                continue
-
-            # Check if new M1 bar arrived
-            curr_bar = bot.get_bar_m1()
-            if curr_bar is not None:
-                if bot.last_bar_time is None or curr_bar['time'] != bot.last_bar_time:
-                    bot.last_bar_time = curr_bar['time']
-
-                    # Update ORB range with new bar
-                    bot.update_orb_range(curr_bar)
-
-                    # Check breakout on new bar
-                    prev_bar, curr_bar = bot.get_last_two_bars()
-                    if prev_bar and curr_bar:
-                        bot.check_breakout(prev_bar, curr_bar)
-
-            # Manage active trade on every tick (millisecond updates)
-            bot.manage_trade(tick)
-
-            # Print status every 5 seconds
-            status_counter += 1
-            if status_counter >= 50:  # ~5 seconds at 100ms sleep
-                bot.print_status()
-                status_counter = 0
-
-            # Sleep 100ms for tick updates
-            time.sleep(0.1)
 
     except KeyboardInterrupt:
-        print("\n\nCtrl+C detected — emergency stop...")
+        console.print("\n\n[bold red]Ctrl+C detected — emergency stop...[/bold red]")
         bot.emergency_stop()
-        bot.print_status()
+        console.print(bot.build_panel())
     finally:
         db.generate_all_html()
-        print("Exported all.html")
+        console.print("\n[green]Exported all.html[/green]")
         mt5.shutdown()
-        print("MT5 shutdown complete.")
+        console.print("[green]MT5 shutdown complete.[/green]")
 
 
 if __name__ == '__main__':
