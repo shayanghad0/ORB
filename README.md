@@ -8,8 +8,10 @@ Python implementation of the ORB (Opening Range Breakout) trading strategy for X
 |------|-------------|
 | `orb_strategy.py` | Backtest engine — reads M1 JSON data, detects ORB trades, calculates margin/P&L, outputs HTML report with charts |
 | `orb_live.py` | Live trading bot — connects to MT5, builds ORB range in real-time, executes trades with partial TP + trailing SL |
+| `ORB_Live.mq5` | MQL5 Expert Advisor — native MT5 EA, same logic as orb_live.py, runs directly in MetaTrader 5 |
 | `db.py` | Trade logging — persists every trade event to JSON, auto-generates HTML reports |
-| `indicator/v5.pine` | Original Pine Script indicator |
+| `indicator/v5.pine` | Pine Script v5 indicator |
+| `indicator/v6.pine` | Pine Script v6 indicator (partial close) |
 
 ## Backtest (`orb_strategy.py`)
 
@@ -102,6 +104,57 @@ python orb_live.py
 ```
 IDLE → BUILDING → WAIT_BREAK → HALF_OPEN → TRAIL → (closed)
 ```
+
+## MQL5 Expert Advisor (`ORB_Live.mq5`)
+
+Native MQL5 EA with the same logic as `orb_live.py`. Runs directly inside MetaTrader 5 — no Python needed.
+
+### How to Install
+
+1. Copy `ORB_Live.mq5` to `MQL5/Experts/` in your MT5 data folder
+2. Open MetaEditor and compile (or press F7)
+3. Drag the EA onto a XAUUSD M1 chart
+4. Enable "Allow Algo Trading"
+
+### How It Works
+
+Same state machine as the Python bot:
+
+```
+IDLE → BUILDING → WAIT_BREAK → HALF_OPEN → TRAIL → DONE
+```
+
+- Builds ORB range from M1 bars during the range window
+- Detects breakout on bar close (cross above high = LONG, cross below low = SL)
+- TP1 (+0.25%): closes 50%, moves SL to break-even
+- TP2 (+0.50%): closes remaining
+- SL (-0.25%): closes all
+- Force close at 11:30 NY
+- Press ESC for emergency stop
+
+### Parameters
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| Range Start | 09:30 NY | Start of ORB range window |
+| Range End | 09:36 NY | End of ORB range window |
+| Trade Start | 09:30 NY | Start of trading window |
+| Trade End | 11:30 NY | End of trading window (force close) |
+| TP1 % | 0.25% | First take profit (close 50%) |
+| TP2 % | 0.50% | Second take profit (close rest) |
+| SL % | 0.25% | Stop loss |
+| Lots | 0.02 | Lot size |
+| Magic | 202609 | EA identifier |
+
+### Python vs MQL5
+
+| Feature | `orb_live.py` | `ORB_Live.mq5` |
+|---------|---------------|-----------------|
+| Requires Python | Yes | No |
+| Runs outside MT5 | Yes | No (native) |
+| Trade logging | JSON + HTML | Print log only |
+| Same strategy | Yes | Yes |
+| Same parameters | Yes | Yes |
 
 ## Trade Logging (`db.py`)
 
